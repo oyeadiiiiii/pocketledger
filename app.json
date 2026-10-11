@@ -1,25 +1,25 @@
 {
   "expo": {
-    "name": "pocketledger",
+    "name": "PocketLedger",
     "slug": "pocketledger",
     "version": "1.0.0",
+    "scheme": "pocketledger",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
+    "platforms": [
+      "ios"
+    ],
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.adityaraj.pocketledger",
+      "buildNumber": "1",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
-      },
-      "predictiveBackGestureEnabled": false
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "plugins": [
+      "expo-router"
+    ],
+    "icon": "./assets/icon.png"
   }
 }

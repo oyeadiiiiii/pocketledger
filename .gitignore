@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# PocketLedger: native folders are generated in CI
+/build
+/dist

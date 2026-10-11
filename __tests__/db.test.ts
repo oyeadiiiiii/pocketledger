@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 import { createTestDb, LEGACY_CSV } from './testDb';
 import * as repo from '../src/db/repo';
-import { migrate } from '../src/db/schema';
+import { LATEST_SCHEMA_VERSION, migrate } from '../src/db/schema';
 import { buildBackupCsv } from '../src/lib/csv';
 import type { SqlDriver } from '../src/db/driver';
 import type { TxInput } from '../src/lib/validation';
@@ -26,7 +26,7 @@ const base = { categoryId: null as string | null, accountId: 'acc_online', toAcc
 describe('schema', () => {
   test('creates tables and seeds your categories and accounts', async () => {
     const db = await createTestDb();
-    expect(db.first<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(1);
+    expect(db.first<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(LATEST_SCHEMA_VERSION);
     const names = repo.listCategories(db).map((c) => c.name);
     for (const n of ['Transport', 'Food', 'Home', 'Shopping', 'Bills', 'Gifts', 'Essentials', 'Stationary', 'Misc.', 'Education', 'Groceries', 'Medicine', 'Petrol', 'Invest', 'rustNroses']) {
       expect(names).toContain(n);
@@ -147,9 +147,8 @@ describe('CSV import', () => {
 
     expect(repo.monthSummary(db, '2026-04').expenses).toBe(38500);
     expect(repo.monthSummary(db, '2026-05').expenses).toBe(965900);
-    expect(repo.monthSummary(db, '2026-07')).toMatchObject({ expenses: 265000, investments: 200000 });
+    expect(repo.monthSummary(db, '2026-07')).toMatchObject({ expenses: 265000, grossExpenses: 265000 });
     expect(repo.modeSplit(db, '2026-07')).toEqual({ cash: 65000, online: 200000 });
-    expect(repo.investmentTotals(db, '2026-09')).toEqual({ month: 200000, allTime: 600000 });
 
     const again = repo.previewImport(db, LEGACY_CSV);
     expect(again.previouslyImportedAt).not.toBeNull();

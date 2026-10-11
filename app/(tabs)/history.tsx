@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getDb } from '../../src/db';
 import { deleteTransaction, listCategories, listTransactions, type TxView } from '../../src/db/repo';
@@ -22,12 +22,25 @@ function toggle<T>(list: T[], value: T): T[] {
 export default function HistoryScreen() {
   const t = useTheme();
   const v = useLedgerVersion();
+  const params = useLocalSearchParams<{ cat?: string }>();
   const [search, setSearch] = useState('');
   const [month, setMonth] = useState<string | null>(null);
   const [account, setAccount] = useState<'all' | AccountKind>('all');
   const [types, setTypes] = useState<TxType[]>([]);
   const [cats, setCats] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+
+  // Arriving from Home's "Top categories": pre-select that category and show the filter.
+  useFocusEffect(
+    useCallback(() => {
+      const cat = typeof params.cat === 'string' && params.cat ? params.cat : null;
+      if (cat) {
+        setCats([cat]);
+        setShowFilters(true);
+        router.setParams({ cat: undefined });
+      }
+    }, [params.cat]),
+  );
 
   const categories = useMemo(() => listCategories(getDb()), [v]);
   const txs = useMemo(

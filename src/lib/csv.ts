@@ -116,11 +116,9 @@ function parseKind(v: string): AccountKind | null {
   return null;
 }
 
-/** Spreadsheet rows are expenses unless the title or category says income, loan or investment. */
+/** Spreadsheet rows are expenses unless the title or category says income or loan. */
 export function classifyLegacyRow(title: string, category: string): TxType {
-  const c = category.trim().toLowerCase();
   const s = `${title} ${category}`.toLowerCase();
-  if (c === 'invest') return 'investment';
   if (/\bloan\b/.test(s) && /\b(repaid|repay|repayment|returned|emi)\b/.test(s)) return 'loan_repaid';
   if (/\bloan\b/.test(s) || /\bborrow/.test(s)) return 'loan_taken';
   if (/\b(salary|income|stipend|credited)\b/.test(s) || /\bcredit\b(?!\s*card)/.test(s)) return 'income';
@@ -315,11 +313,11 @@ export function buildBackupCsv(rows: ExportTx[]): string {
   return toCsv(out);
 }
 
-/** Your original six-column spreadsheet format (expenses and investments only). */
+/** Your original six-column spreadsheet format (expenses only). */
 export function buildLegacyCsv(rows: ExportTx[]): string {
   const out: string[][] = [['Title', 'Date', 'Use', 'Amount', 'Mode', 'Remark']];
   for (const r of rows) {
-    if (r.type !== 'expense' && r.type !== 'investment') continue;
+    if (r.type !== 'expense') continue;
     out.push([
       safeCell(r.title), ymdToDMY(r.occurred_at.slice(0, 10)), r.category_name ?? '',
       formatINR(r.amount_paise), kindLabel(r.account_kind), safeCell(r.remark ?? ''),

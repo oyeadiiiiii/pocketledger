@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getDb } from '../../src/db';
 import {
-  accountBalances, categorySpend, countPending, investmentTotals, listTransactions, loanStatus, monthSummary, monthlySeries,
+  accountBalances, categorySpend, countPending, listTransactions, monthSummary, monthlySeries,
 } from '../../src/db/repo';
 import { useLedgerVersion } from '../../src/state/ledgerStore';
 import { useTheme } from '../../src/theme/ThemeProvider';
@@ -29,8 +29,6 @@ export default function HomeScreen() {
       cats: categorySpend(db, month).slice(0, 5),
       recent: listTransactions(db, { limit: 6 }),
       pending: countPending(db),
-      loans: loanStatus(db),
-      inv: investmentTotals(db, month),
     };
   }, [month, v]);
 
@@ -68,10 +66,8 @@ export default function HomeScreen() {
         <FadeIn delay={80}>
           <View style={s.grid}>
             <StatTile label="Income" paise={d.s.income} color={t.income} icon="arrow-down-circle" />
-            <StatTile label="Expenses" paise={d.s.expenses} color={t.expense} icon="arrow-up-circle" hint={d.s.investments ? `incl. ${formatCompactINR(d.s.investments)} invested` : d.s.refunds ? `after ${formatCompactINR(d.s.refunds)} refunds` : undefined} />
+            <StatTile label="Expenses" paise={d.s.expenses} color={t.expense} icon="arrow-up-circle" hint={d.s.refunds ? `after ${formatCompactINR(d.s.refunds)} refunds` : undefined} />
             <StatTile label="Savings" paise={d.s.savings} color={d.s.savings >= 0 ? t.income : t.expense} icon="shield-checkmark" hint="income − expenses" />
-            <StatTile label="Invested" paise={d.inv.month} color={t.accent} icon="trending-up" hint={`all-time ${formatCompactINR(d.inv.allTime)}`} />
-            <StatTile label="Outstanding loans" paise={d.loans.outstanding} color={d.loans.outstanding > 0 ? t.warning : t.textMuted} icon="card" hint={`taken ${formatCompactINR(d.loans.taken)} · repaid ${formatCompactINR(d.loans.repaid)}`} full />
           </View>
         </FadeIn>
 
@@ -83,7 +79,10 @@ export default function HomeScreen() {
         <SectionLabel>Top categories</SectionLabel>
         <Card>
           {d.cats.length ? (
-            <HBarList items={d.cats.map((c) => ({ label: c.name, value: c.total, color: c.color, icon: c.icon }))} />
+            <HBarList items={d.cats.map((c) => ({
+              label: c.name, value: c.total, color: c.color, icon: c.icon,
+              onPress: () => router.push(`/history?cat=${encodeURIComponent(c.id)}`),
+            }))} />
           ) : (
             <EmptyState icon="pie-chart-outline" title="No spending this month" />
           )}

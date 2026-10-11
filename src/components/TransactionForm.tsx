@@ -22,10 +22,7 @@ export interface TxFormValues {
 
 export function blankFormValues(accounts: Account[], categories: Category[], type: TxType = 'expense'): TxFormValues {
   const online = accounts.find((a) => a.kind === 'online') ?? accounts[0];
-  const defaultCat =
-    type === 'investment' ? categories.find((c) => c.name === 'Invest')?.id
-    : type === 'income' ? categories.find((c) => c.name === 'Income')?.id
-    : undefined;
+  const defaultCat = type === 'income' ? categories.find((c) => c.name === 'Income')?.id : undefined;
   return {
     type, amountText: '', title: '', occurredAt: nowLocalIso(), categoryId: defaultCat ?? null,
     accountId: online?.id ?? '',
@@ -43,7 +40,6 @@ export function valuesFromTx(tx: TxView): TxFormValues {
 
 function categoriesFor(type: TxType, categories: Category[]): Category[] {
   if (type === 'income') return categories.filter((c) => c.kind !== 'expense');
-  if (type === 'investment') return categories;
   return categories.filter((c) => c.kind !== 'income');
 }
 
@@ -81,7 +77,6 @@ export function TransactionForm({ initial, accounts, categories, submitLabel, on
     setV((p) => {
       let categoryId = needsCategory(type) ? p.categoryId : null;
       if (categoryId && !categoriesFor(type, categories).some((c) => c.id === categoryId)) categoryId = null;
-      if (type === 'investment' && !categoryId) categoryId = categories.find((c) => c.name === 'Invest')?.id ?? null;
       if (type === 'income' && !categoryId) categoryId = categories.find((c) => c.name === 'Income')?.id ?? null;
       return { ...p, type, categoryId, toAccountId: type === 'transfer' ? otherAccount(p.accountId) : null };
     });

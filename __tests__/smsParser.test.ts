@@ -76,9 +76,9 @@ describe('harder cases', () => {
     expect(r.flags).toContain('atm_withdrawal');
   });
 
-  test('broker debit is an investment', () => {
+  test('broker debit is an ordinary expense in the Invest category', () => {
     const r = tx('Rs 1,000.00 debited from A/c XX1234 to ZERODHA BROKING on 02-07-2026');
-    expect(r).toMatchObject({ suggestedType: 'investment', suggestedCategory: 'Invest' });
+    expect(r).toMatchObject({ suggestedType: 'expense', suggestedCategory: 'Invest' });
   });
 
   test('salary credit', () => {

@@ -13,8 +13,10 @@ Push to `main` (or run the "iOS unsigned IPA" workflow manually). Download the
 `PocketLedger-unsigned-ipa` artifact, unzip it, and sign/install `PocketLedger-unsigned.ipa` with Sideloadly.
 
 ## SMS automation
-Settings → SMS automation → Share URL template. Use it in an Apple Shortcuts
-Message automation: URL Encode the message content, append it to the template, Open URLs.
+Set up an Apple Shortcuts Message automation (see Settings → SMS automation). It silently
+queues each bank SMS into the clipboard and shows a "Transaction detected" notification —
+**the app never opens by itself**. Open PocketLedger whenever you're free; queued alerts are
+picked up automatically and sit in the Review tab until you confirm them all at once.
 
 ## Data safety
 Everything is on the phone only. Export a backup CSV regularly (Settings → Export full backup).

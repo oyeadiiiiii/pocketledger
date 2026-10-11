@@ -219,7 +219,7 @@ export function parseSms(raw: string, opts: { now?: Date } = {}): SmsParseResult
     if (/\batm\b/.test(lower) && /(withdraw|cash)/.test(lower)) {
       suggestedType = 'transfer'; category = null; merchant = 'ATM withdrawal'; flags.push('atm_withdrawal');
     } else if (INVEST_RE.test(`${merchant ?? ''} ${t}`)) {
-      suggestedType = 'investment'; category = 'Invest';
+      suggestedType = 'expense'; category = 'Invest';
     } else if (/\bemi\b|loan\s+(?:repayment|instal)/i.test(t)) {
       suggestedType = 'loan_repaid'; category = null;
     } else {

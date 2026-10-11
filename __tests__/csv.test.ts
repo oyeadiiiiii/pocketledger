@@ -31,8 +31,9 @@ describe('your spreadsheet format', () => {
   test('exact totals in paise', () => {
     const rows = parsed?.rows ?? [];
     expect(rows.reduce((s, r) => s + r.amountPaise, 0)).toBe(2021787);
-    const invest = rows.filter((r) => r.type === 'investment');
+    const invest = rows.filter((r) => r.categoryName === 'Invest');
     expect(invest).toHaveLength(4);
+    expect(invest.every((r) => r.type === 'expense')).toBe(true);
     expect(invest.reduce((s, r) => s + r.amountPaise, 0)).toBe(600000);
   });
 

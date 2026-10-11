@@ -136,7 +136,7 @@ function PreviewRow({ row, onToggle }: { row: ImportRow; onToggle: () => void })
     <Card style={{ gap: 6, opacity: row.include || invalid ? 1 : 0.6 }}>
       <View style={s.top}>
         <Text style={{ color: t.textMuted, fontSize: 12 }}>Line {row.line}</Text>
-        <Badge label={TX_TYPE_LABEL[row.type]} tone={row.type === 'investment' ? 'accent' : 'neutral'} />
+        <Badge label={TX_TYPE_LABEL[row.type]} tone="neutral" />
         {row.duplicate ? <Badge label="Duplicate" tone="warning" /> : null}
         <View style={{ marginLeft: 'auto' }}>
           <Switch value={row.include && !invalid} onValueChange={onToggle} disabled={invalid} accessibilityLabel={`Include line ${row.line}`} />

@@ -5,15 +5,19 @@ import * as Haptics from 'expo-haptics';
 import { getDb } from '../src/db';
 import { getTransaction, insertTransaction, listAccounts, listCategories, updateTransaction } from '../src/db/repo';
 import { bumpLedger } from '../src/state/ledgerStore';
-import { isTxType } from '../src/lib/types';
+import { isTxType, type TxType } from '../src/lib/types';
 import type { TxInput } from '../src/lib/validation';
 import { EmptyState, Screen, errorMessage } from '../src/components/ui';
 import { TransactionForm, blankFormValues, valuesFromTx } from '../src/components/TransactionForm';
 
+/** Adding a transaction is deliberately simple: only Expense and Income. */
+const ADD_TYPES: TxType[] = ['expense', 'income'];
+
 export default function AddScreen() {
   const params = useLocalSearchParams<{ id?: string; type?: string }>();
   const editId = typeof params.id === 'string' && params.id ? params.id : null;
-  const presetType = isTxType(params.type) ? params.type : 'expense';
+  const requested = isTxType(params.type) ? params.type : 'expense';
+  const presetType: TxType = ADD_TYPES.includes(requested) ? requested : 'expense';
   const db = getDb();
 
   const accounts = useMemo(() => listAccounts(db), [db]);
@@ -52,6 +56,8 @@ export default function AddScreen() {
         accounts={accounts}
         categories={categories}
         submitLabel={existing ? 'Save changes' : 'Save transaction'}
+        // Keep an old loan/transfer's own type selectable so it can still be edited.
+        types={existing && !ADD_TYPES.includes(existing.type) ? [...ADD_TYPES, existing.type] : ADD_TYPES}
         onSubmit={onSubmit}
       />
     </Screen>

@@ -10,7 +10,6 @@ import { asIcon, IconCircle, type IconName } from './ui';
 const TYPE_ICON: Record<TxType, IconName> = {
   expense: 'arrow-up-circle',
   income: 'arrow-down-circle',
-  investment: 'trending-up',
   loan_taken: 'hand-left',
   loan_repaid: 'checkmark-done-circle',
   transfer: 'swap-horizontal',

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View, type DimensionValue } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View, type DimensionValue } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { formatCompactINR, formatINR } from '../lib/money';
 import { asIcon, IconCircle } from './ui';
@@ -95,28 +95,47 @@ function GrowWidth({ pct, color, delay }: { pct: number; color: string; delay: n
   );
 }
 
-/** Ranked horizontal bars with share of total. */
-export function HBarList({ items }: { items: { label: string; value: number; color: string; icon?: string }[] }) {
+/** Ranked horizontal bars with share of total. Rows with onPress become tappable. */
+export function HBarList({ items }: { items: { label: string; value: number; color: string; icon?: string; onPress?: () => void }[] }) {
   const t = useTheme();
   const total = items.reduce((sum, i) => sum + Math.max(0, i.value), 0) || 1;
   const max = Math.max(1, ...items.map((i) => i.value));
   return (
     <View style={{ gap: 14 }}>
-      {items.map((i, idx) => (
-        <View key={i.label} style={s.hRow} accessible accessibilityLabel={`${i.label}: ${formatINR(i.value)}, ${Math.round((i.value / total) * 100)} percent`}>
-          <IconCircle name={asIcon(i.icon)} color={i.color} size={38} />
-          <View style={{ flex: 1, gap: 6 }}>
-            <View style={s.hTop}>
-              <Text style={[s.hLabel, { color: t.text }]} numberOfLines={1}>{i.label}</Text>
-              <Text style={[s.hValue, { color: t.text }]}>{formatINR(i.value)}</Text>
+      {items.map((i, idx) => {
+        const content = (
+          <>
+            <IconCircle name={asIcon(i.icon)} color={i.color} size={38} />
+            <View style={{ flex: 1, gap: 6 }}>
+              <View style={s.hTop}>
+                <Text style={[s.hLabel, { color: t.text }]} numberOfLines={1}>{i.label}</Text>
+                <Text style={[s.hValue, { color: t.text }]}>{formatINR(i.value)}</Text>
+              </View>
+              <View style={[s.track, { backgroundColor: t.cardAlt }]}>
+                <GrowWidth pct={(i.value / max) * 100} color={i.color} delay={idx * 70} />
+              </View>
+              <Text style={{ color: t.textMuted, fontSize: 12 }}>{Math.round((i.value / total) * 100)}% of spending</Text>
             </View>
-            <View style={[s.track, { backgroundColor: t.cardAlt }]}>
-              <GrowWidth pct={(i.value / max) * 100} color={i.color} delay={idx * 70} />
-            </View>
-            <Text style={{ color: t.textMuted, fontSize: 12 }}>{Math.round((i.value / total) * 100)}% of spending</Text>
+          </>
+        );
+        const label = `${i.label}: ${formatINR(i.value)}, ${Math.round((i.value / total) * 100)} percent`;
+        return i.onPress ? (
+          <Pressable
+            key={i.label}
+            onPress={i.onPress}
+            accessibilityRole="button"
+            accessibilityLabel={label}
+            accessibilityHint="Opens all transactions in this category"
+            style={({ pressed }) => [s.hRow, { opacity: pressed ? 0.6 : 1 }]}
+          >
+            {content}
+          </Pressable>
+        ) : (
+          <View key={i.label} style={s.hRow} accessible accessibilityLabel={label}>
+            {content}
           </View>
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 }

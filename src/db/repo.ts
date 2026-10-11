@@ -88,11 +88,10 @@ export interface MonthSummary {
   expenses: number;      // expenses minus refunds
   grossExpenses: number;
   refunds: number;
-  investments: number;
   loanTaken: number;
   loanRepaid: number;
   transfers: number;
-  savings: number;       // income - expenses (investments and loans excluded)
+  savings: number;       // income - expenses (loans excluded)
   netCashFlow: number;   // everything that moved money in/out of your accounts
 }
 
@@ -333,21 +332,20 @@ export function exportRows(db: SqlDriver): ExportTx[] {
 
 // ======================= Summaries =======================
 type Totals = Record<TxType, number>;
-const emptyTotals = (): Totals => ({ expense: 0, income: 0, investment: 0, loan_taken: 0, loan_repaid: 0, transfer: 0, refund: 0 });
+const emptyTotals = (): Totals => ({ expense: 0, income: 0, loan_taken: 0, loan_repaid: 0, transfer: 0, refund: 0 });
 
 function summarize(t: Totals): MonthSummary {
-  const expenses = t.expense + t.investment - t.refund; // investments count as spending
+  const expenses = t.expense - t.refund;
   return {
     income: t.income,
     expenses,
-    grossExpenses: t.expense + t.investment,
+    grossExpenses: t.expense,
     refunds: t.refund,
-    investments: t.investment,
     loanTaken: t.loan_taken,
     loanRepaid: t.loan_repaid,
     transfers: t.transfer,
     savings: t.income - expenses,
-    netCashFlow: t.income + t.loan_taken + t.refund - t.expense - t.investment - t.loan_repaid,
+    netCashFlow: t.income + t.loan_taken + t.refund - t.expense - t.loan_repaid,
   };
 }
 
@@ -378,18 +376,18 @@ export interface CategorySpend { id: string; name: string; color: string; icon: 
 export function categorySpend(db: SqlDriver, monthKey: string): CategorySpend[] {
   return db.all<CategorySpend>(`
     SELECT c.id, c.name, c.color, c.icon,
-           SUM(CASE WHEN t.type IN ('expense', 'investment') THEN t.amount_paise ELSE -t.amount_paise END) AS total
+           SUM(CASE WHEN t.type = 'expense' THEN t.amount_paise ELSE -t.amount_paise END) AS total
     FROM transactions t JOIN categories c ON c.id = t.category_id
-    WHERE t.month_key = ? AND t.type IN ('expense', 'investment', 'refund')
+    WHERE t.month_key = ? AND t.type IN ('expense', 'refund')
     GROUP BY c.id HAVING total > 0 ORDER BY total DESC`, [monthKey]);
 }
 
 export function modeSplit(db: SqlDriver, monthKey: string): { cash: number; online: number } {
   const out = { cash: 0, online: 0 };
   for (const r of db.all<{ kind: AccountKind; total: number }>(`
-    SELECT a.kind, SUM(CASE WHEN t.type IN ('expense', 'investment') THEN t.amount_paise ELSE -t.amount_paise END) AS total
+    SELECT a.kind, SUM(CASE WHEN t.type = 'expense' THEN t.amount_paise ELSE -t.amount_paise END) AS total
     FROM transactions t JOIN accounts a ON a.id = t.account_id
-    WHERE t.month_key = ? AND t.type IN ('expense', 'investment', 'refund') GROUP BY a.kind`, [monthKey])) {
+    WHERE t.month_key = ? AND t.type IN ('expense', 'refund') GROUP BY a.kind`, [monthKey])) {
     out[r.kind] = r.total;
   }
   return out;
@@ -401,14 +399,6 @@ export function loanStatus(db: SqlDriver): { taken: number; repaid: number; outs
            COALESCE(SUM(CASE WHEN type = 'loan_repaid' THEN amount_paise END), 0) AS repaid
     FROM transactions`) ?? { taken: 0, repaid: 0 };
   return { taken: r.taken, repaid: r.repaid, outstanding: r.taken - r.repaid };
-}
-
-export function investmentTotals(db: SqlDriver, monthKey: string): { month: number; allTime: number } {
-  const r = db.first<{ month: number; allTime: number }>(`
-    SELECT COALESCE(SUM(CASE WHEN month_key = ? THEN amount_paise END), 0) AS month,
-           COALESCE(SUM(amount_paise), 0) AS allTime
-    FROM transactions WHERE type = 'investment'`, [monthKey]) ?? { month: 0, allTime: 0 };
-  return r;
 }
 
 export function ledgerStats(db: SqlDriver): { transactions: number; pending: number; categories: number; imports: number } {
@@ -428,7 +418,7 @@ export type IngestOutcome =
   | { status: 'duplicate'; existingId: string; reason: 'same_message' | 'same_reference' }
   | { status: 'rejected'; reason: 'empty' | 'too_long' | 'rate_limited' };
 
-const DEBIT_TYPES: TxType[] = ['expense', 'investment', 'loan_repaid', 'transfer'];
+const DEBIT_TYPES: TxType[] = ['expense', 'loan_repaid', 'transfer'];
 const CREDIT_TYPES: TxType[] = ['income', 'refund', 'loan_taken'];
 
 /**

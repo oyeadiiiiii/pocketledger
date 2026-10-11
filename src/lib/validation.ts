@@ -18,7 +18,7 @@ export type TxErrors = Partial<Record<TxField, string>>;
 
 /** Loans and transfers carry no spending category. */
 export const needsCategory = (t: TxType): boolean =>
-  t === 'expense' || t === 'refund' || t === 'investment' || t === 'income';
+  t === 'expense' || t === 'refund' || t === 'income';
 
 export function validateTxInput(i: TxInput, now: Date = new Date()): TxErrors {
   const e: TxErrors = {};

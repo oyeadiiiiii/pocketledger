@@ -18,7 +18,7 @@ export const DEFAULT_CATEGORIES: SeedCategory[] = [
   { id: 'cat_groceries', name: 'Groceries', kind: 'expense', icon: 'cart', color: '#22C55E' },
   { id: 'cat_medicine', name: 'Medicine', kind: 'expense', icon: 'medkit', color: '#EF4444' },
   { id: 'cat_petrol', name: 'Petrol', kind: 'expense', icon: 'speedometer', color: '#EAB308' },
-  { id: 'cat_invest', name: 'Invest', kind: 'any', icon: 'trending-up', color: '#10B981' },
+  { id: 'cat_invest', name: 'Invest', kind: 'expense', icon: 'trending-up', color: '#10B981' },
   { id: 'cat_rustnroses', name: 'rustNroses', kind: 'expense', icon: 'rose', color: '#BE123C' },
   { id: 'cat_salary', name: 'Salary', kind: 'income', icon: 'cash', color: '#16A34A' },
   { id: 'cat_income', name: 'Income', kind: 'income', icon: 'wallet', color: '#059669' },
@@ -142,7 +142,21 @@ export const MIGRATIONS: Migration[] = [
       db.run('INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)', ['theme', 'system', now]);
     },
   },
-  // Future schema changes: add { version: 2, up: ... } here. Never edit version 1.
+  {
+    version: 2,
+    up: (db) => {
+      // Investments are ordinary expenses now: retype old rows (keeping the Invest category)
+      // and rebuild the type-prefixed dedupe keys.
+      db.run(
+        `UPDATE transactions SET dedupe_key = 'expense' || substr(dedupe_key, 12), type = 'expense',
+         updated_at = ? WHERE type = 'investment'`,
+        [new Date().toISOString()],
+      );
+      db.run("UPDATE pending_transactions SET suggested_type = 'expense' WHERE suggested_type = 'investment'");
+      db.run("UPDATE categories SET kind = 'expense' WHERE id = 'cat_invest'");
+    },
+  },
+  // Future schema changes: add { version: 3, up: ... } here. Never edit earlier versions.
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

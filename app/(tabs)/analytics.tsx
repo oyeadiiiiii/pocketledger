@@ -54,7 +54,7 @@ export default function AnalyticsScreen() {
       <Card style={{ gap: 8 }}>
         <BarChart color={t.income} data={d.series.map((m) => ({ label: shortMonth(m.key), value: m.summary.savings, highlight: m.key === month }))} />
         <Text style={{ color: t.textMuted, fontSize: 13 }}>
-          Savings = salary/income − expenses. Borrowed money is not income, and investments are shown separately.
+          Savings = salary/income − expenses. Expenses include investments; borrowed money is not income.
         </Text>
       </Card>
 

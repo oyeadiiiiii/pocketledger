@@ -336,11 +336,11 @@ type Totals = Record<TxType, number>;
 const emptyTotals = (): Totals => ({ expense: 0, income: 0, investment: 0, loan_taken: 0, loan_repaid: 0, transfer: 0, refund: 0 });
 
 function summarize(t: Totals): MonthSummary {
-  const expenses = t.expense - t.refund;
+  const expenses = t.expense + t.investment - t.refund; // investments count as spending
   return {
     income: t.income,
     expenses,
-    grossExpenses: t.expense,
+    grossExpenses: t.expense + t.investment,
     refunds: t.refund,
     investments: t.investment,
     loanTaken: t.loan_taken,
@@ -378,18 +378,18 @@ export interface CategorySpend { id: string; name: string; color: string; icon: 
 export function categorySpend(db: SqlDriver, monthKey: string): CategorySpend[] {
   return db.all<CategorySpend>(`
     SELECT c.id, c.name, c.color, c.icon,
-           SUM(CASE WHEN t.type = 'expense' THEN t.amount_paise ELSE -t.amount_paise END) AS total
+           SUM(CASE WHEN t.type IN ('expense', 'investment') THEN t.amount_paise ELSE -t.amount_paise END) AS total
     FROM transactions t JOIN categories c ON c.id = t.category_id
-    WHERE t.month_key = ? AND t.type IN ('expense', 'refund')
+    WHERE t.month_key = ? AND t.type IN ('expense', 'investment', 'refund')
     GROUP BY c.id HAVING total > 0 ORDER BY total DESC`, [monthKey]);
 }
 
 export function modeSplit(db: SqlDriver, monthKey: string): { cash: number; online: number } {
   const out = { cash: 0, online: 0 };
   for (const r of db.all<{ kind: AccountKind; total: number }>(`
-    SELECT a.kind, SUM(CASE WHEN t.type = 'expense' THEN t.amount_paise ELSE -t.amount_paise END) AS total
+    SELECT a.kind, SUM(CASE WHEN t.type IN ('expense', 'investment') THEN t.amount_paise ELSE -t.amount_paise END) AS total
     FROM transactions t JOIN accounts a ON a.id = t.account_id
-    WHERE t.month_key = ? AND t.type IN ('expense', 'refund') GROUP BY a.kind`, [monthKey])) {
+    WHERE t.month_key = ? AND t.type IN ('expense', 'investment', 'refund') GROUP BY a.kind`, [monthKey])) {
     out[r.kind] = r.total;
   }
   return out;

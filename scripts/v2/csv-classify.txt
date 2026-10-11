@@ -1,0 +1,10 @@
+/** Spreadsheet rows are expenses unless the title or category says income, loan or investment. */
+export function classifyLegacyRow(title: string, category: string): TxType {
+  const c = category.trim().toLowerCase();
+  const s = `${title} ${category}`.toLowerCase();
+  if (c === 'invest') return 'investment';
+  if (/\bloan\b/.test(s) && /\b(repaid|repay|repayment|returned|emi)\b/.test(s)) return 'loan_repaid';
+  if (/\bloan\b/.test(s) || /\bborrow/.test(s)) return 'loan_taken';
+  if (/\b(salary|income|stipend|credited)\b/.test(s) || /\bcredit\b(?!\s*card)/.test(s)) return 'income';
+  return 'expense';
+}

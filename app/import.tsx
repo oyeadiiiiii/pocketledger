@@ -50,8 +50,8 @@ export default function ImportScreen() {
   const setAll = (include: boolean) =>
     setPreview((p) => p && { ...p, rows: p.rows.map((r) => (r.errors.length || r.duplicate ? r : { ...r, include })) });
 
-  const toggleRow = (line: number) =>
-    setPreview((p) => p && { ...p, rows: p.rows.map((r) => (r.line === line && !r.errors.length ? { ...r, include: !r.include } : r)) });
+  const toggleRow = (index: number) =>
+    setPreview((p) => p && { ...p, rows: p.rows.map((r, i) => (i === index && !r.errors.length ? { ...r, include: !r.include } : r)) });
 
   const commit = () => {
     if (!preview) return;
@@ -120,10 +120,10 @@ export default function ImportScreen() {
     <Screen scroll={false} edges={['bottom']}>
       <FlatList
         data={preview?.rows ?? []}
-        keyExtractor={(r) => String(r.line)}
+        keyExtractor={(r, i) => String(r.line) + '-' + i}
         ListHeaderComponent={header}
         contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 8 }}
-        renderItem={({ item }) => <PreviewRow row={item} onToggle={() => toggleRow(item.line)} />}
+        renderItem={({ item, index }) => <PreviewRow row={item} onToggle={() => toggleRow(index)} />}
       />
     </Screen>
   );

@@ -7,7 +7,6 @@ import { confirmPending, getPending, ignorePending, listAccounts, listCategories
 import { bumpLedger, useLedgerVersion } from '../../src/state/ledgerStore';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { paiseToPlain, formatINR } from '../../src/lib/money';
-import { ymdToDMY } from '../../src/lib/dates';
 import { FLAG_LABEL } from '../../src/lib/smsParser';
 import type { TxInput } from '../../src/lib/validation';
 import { Badge, Card, Chip, EmptyState, PrimaryButton, Screen, SectionLabel, errorMessage } from '../../src/components/ui';
@@ -43,8 +42,7 @@ export default function ReviewScreen() {
       type: p.suggested_type,
       amountText: amount ? paiseToPlain(amount) : '',
       title: p.merchant,
-      dateText: ymdToDMY(p.occurred_at.slice(0, 10)),
-      timeText: p.occurred_at.slice(11, 16),
+      occurredAt: p.occurred_at,
       categoryId: p.category_id,
       accountId: p.account_id,
       toAccountId: p.suggested_type === 'transfer' ? accounts.find((a) => a.kind === 'cash')?.id ?? null : null,

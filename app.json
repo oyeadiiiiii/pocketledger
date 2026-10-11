@@ -18,7 +18,8 @@
       }
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "@react-native-community/datetimepicker"
     ],
     "icon": "./assets/icon.png"
   }

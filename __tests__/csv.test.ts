@@ -103,3 +103,19 @@ describe('backup round trip', () => {
     expect(parsed?.rows[1]).toMatchObject({ type: 'transfer', accountKind: 'online', toAccountKind: 'cash', categoryName: null, errors: [] });
   });
 });
+describe('income and loan rows in the spreadsheet', () => {
+  const csv = [
+    'Title,Date,Use,Amount,Mode,Remark',
+    'Salary Credit,01/05/2026,,"₹21,000.00",,',
+    'Loan Taken,02/04/2026,,"₹10,000.00",Online,',
+    'Loan Repaid,03/05/2026,,"₹10,000.00",Online,',
+    'Coffee,04/05/2026,Food,₹60.00,Online,',
+  ].join('\n');
+  const rows = parseImportTable(parseCsv(csv), { knownCategories: known })?.rows ?? [];
+  test('salary is income, loans are loans', () => {
+    expect(rows.map((r) => r.type)).toEqual(['income', 'loan_taken', 'loan_repaid', 'expense']);
+    expect(rows[0]).toMatchObject({ categoryName: 'Salary', accountKind: 'online', errors: [] });
+    expect(rows[1].categoryName).toBeNull();
+    expect(rows.every((r) => r.include)).toBe(true);
+  });
+});

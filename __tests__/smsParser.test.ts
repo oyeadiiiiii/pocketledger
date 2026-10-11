@@ -86,6 +86,11 @@ describe('harder cases', () => {
     expect(r).toMatchObject({ suggestedType: 'income', suggestedCategory: 'Salary', amountPaise: 2100000 });
   });
 
+  test('"Salary Credit" wording is a credit', () => {
+    const r = tx('SALARY CREDIT of INR 21,000.00 to your A/c XX5678 on 01-10-2026');
+    expect(r).toMatchObject({ direction: 'credit', suggestedType: 'income', suggestedCategory: 'Salary', amountPaise: 2100000 });
+  });
+
   test('VPA merchant and UPI reference', () => {
     const r = tx('Rs 250.00 debited from a/c **1234 on 11-10-26 to VPA zomato.order@okaxis (UPI Ref No 628912345678)');
     expect(r).toMatchObject({ merchant: 'zomato.order', suggestedCategory: 'Food', reference: '628912345678', accountLast4: '1234' });

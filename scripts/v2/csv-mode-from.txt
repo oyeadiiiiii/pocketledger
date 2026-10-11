@@ -1,0 +1,12 @@
+    const modeRaw = get('mode');
+    let accountKind: AccountKind = 'online';
+    const kind = parseKind(modeRaw);
+    if (kind) accountKind = kind;
+    else if (/upi|card|bank|net|gpay|paytm|phonepe/i.test(modeRaw)) warnings.push(`Mode "${modeRaw}" treated as Online`);
+    else errors.push(`Unknown mode "${modeRaw}" (expected Cash or Online)`);
+
+    let cat = get('category');
+    if (!cat) { cat = 'Misc.'; warnings.push('No category given, using Misc.'); }
+    if (cat.length > 40) errors.push('Category name longer than 40 characters');
+    cat = canonicalCategory(cat, known, warnings);
+    const type: TxType = cat.toLowerCase() === 'invest' ? 'investment' : 'expense';

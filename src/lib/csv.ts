@@ -116,10 +116,63 @@ function parseKind(v: string): AccountKind | null {
   return null;
 }
 
+/** Spreadsheet rows are expenses unless the title or category says income, loan or investment. */
+export function classifyLegacyRow(title: string, category: string): TxType {
+  const c = category.trim().toLowerCase();
+  const s = `${title} ${category}`.toLowerCase();
+  if (c === 'invest') return 'investment';
+  if (/\bloan\b/.test(s) && /\b(repaid|repay|repayment|returned|emi)\b/.test(s)) return 'loan_repaid';
+  if (/\bloan\b/.test(s) || /\bborrow/.test(s)) return 'loan_taken';
+  if (/\b(salary|income|stipend|credited)\b/.test(s) || /\bcredit\b(?!\s*card)/.test(s)) return 'income';
+  return 'expense';
+}
+const LEGACY_KEYS: LegacyKey[] = ['title', 'date', 'category', 'amount', 'mode', 'remark'];
+
+/**
+ * Monthly tabs keep Salary Credit / Loan Taken / Loan Repaid as label + value cells beside the
+ * table (e.g. K8 "Salary Credit", L8 "₹9,677.00"). Calculated cells (IN, Save, Total Expense,
+ * Had/Used/Left, category totals) are deliberately ignored.
+ */
+const SUMMARY_LABELS: Array<{ re: RegExp; type: TxType; title: string; category: string | null }> = [
+  { re: /^salary( credit(ed)?)?$/, type: 'income', title: 'Salary Credit', category: 'Salary' },
+  { re: /^loan taken$/, type: 'loan_taken', title: 'Loan Taken', category: null },
+  { re: /^loan (repaid|repayment|returned)$/, type: 'loan_repaid', title: 'Loan Repaid', category: null },
+];
+
+function parseSummaryCells(table: string[][], idx: Record<LegacyKey, number>, txRows: ImportRow[]): ImportRow[] {
+  const tableCols = new Set(LEGACY_KEYS.map((k) => idx[k]).filter((c) => c >= 0));
+  const dates = txRows.filter((r) => r.occurredAt).map((r) => r.occurredAt.slice(0, 10)).sort();
+  const firstDate = dates[0] ?? null;
+  const out: ImportRow[] = [];
+  table.forEach((r, rowIndex) => {
+    if (rowIndex === 0) return;
+    r.forEach((cell, c) => {
+      if (tableCols.has(c)) return;
+      const label = cell.trim().toLowerCase().replace(/\s+/g, ' ');
+      const match = SUMMARY_LABELS.find((l) => l.re.test(label));
+      if (!match) return;
+      const valueCell = r.slice(c + 1).find((x) => x.trim() !== '') ?? '';
+      const amount = parseSignedAmount(valueCell.trim());
+      if (amount === null || amount === 0) return;
+      const errors: string[] = [];
+      const warnings = ['From the summary cells beside the table'];
+      if (amount < 0) errors.push('Amount must be greater than ₹0');
+      if (firstDate) warnings.push('Date estimated from the first transaction in this tab; edit it after import if needed');
+      else errors.push('No transaction dates in this file to place it on');
+      out.push({
+        line: rowIndex + 1, id: null, type: match.type, title: match.title,
+        occurredAt: firstDate ? `${firstDate}T09:00` : '', categoryName: match.category,
+        accountKind: 'online', toAccountKind: null, amountPaise: Math.abs(amount), remark: 'Imported from spreadsheet summary',
+        errors, warnings, duplicate: false, include: errors.length === 0,
+      });
+    });
+  });
+  return out;
+}
 function parseLegacy(table: string[][], idx: Record<LegacyKey, number>, known: string[]): ImportRow[] {
   const rows: ImportRow[] = [];
   table.slice(1).forEach((r, i) => {
-    if (r.every((c) => !c.trim())) return;
+    if (LEGACY_KEYS.every((k) => idx[k] < 0 || !(r[idx[k]] ?? '').trim())) return;
     const get = (k: LegacyKey) => (idx[k] >= 0 ? (r[idx[k]] ?? '').trim() : '');
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -140,14 +193,23 @@ function parseLegacy(table: string[][], idx: Record<LegacyKey, number>, known: s
     let accountKind: AccountKind = 'online';
     const kind = parseKind(modeRaw);
     if (kind) accountKind = kind;
+    else if (!modeRaw) warnings.push('No mode given, treated as Online');
     else if (/upi|card|bank|net|gpay|paytm|phonepe/i.test(modeRaw)) warnings.push(`Mode "${modeRaw}" treated as Online`);
     else errors.push(`Unknown mode "${modeRaw}" (expected Cash or Online)`);
 
-    let cat = get('category');
-    if (!cat) { cat = 'Misc.'; warnings.push('No category given, using Misc.'); }
-    if (cat.length > 40) errors.push('Category name longer than 40 characters');
-    cat = canonicalCategory(cat, known, warnings);
-    const type: TxType = cat.toLowerCase() === 'invest' ? 'investment' : 'expense';
+    const rawCat = get('category');
+    const type = classifyLegacyRow(title, rawCat);
+    let cat: string | null;
+    if (type === 'loan_taken' || type === 'loan_repaid') {
+      cat = null;
+    } else if (type === 'income') {
+      cat = /salary/i.test(`${title} ${rawCat}`) ? 'Salary' : 'Income';
+    } else {
+      let c = rawCat;
+      if (!c) { c = 'Misc.'; warnings.push('No category given, using Misc.'); }
+      if (c.length > 40) errors.push('Category name longer than 40 characters');
+      cat = canonicalCategory(c, known, warnings);
+    }
 
     rows.push({
       line: i + 2, id: null, type, title, occurredAt: ymd ? `${ymd}T12:00` : '', categoryName: cat,
@@ -215,7 +277,8 @@ export function parseImportTable(table: string[][], ctx: { knownCategories: stri
   const idx = {} as Record<LegacyKey, number>;
   (Object.keys(LEGACY_ALIASES) as LegacyKey[]).forEach((k) => { idx[k] = findCol(header, LEGACY_ALIASES[k]); });
   if (idx.title < 0 || idx.date < 0 || idx.amount < 0 || idx.category < 0 || idx.mode < 0) return null;
-  return { format: 'legacy', rows: parseLegacy(table, idx, ctx.knownCategories) };
+  const legacyRows = parseLegacy(table, idx, ctx.knownCategories);
+  return { format: 'legacy', rows: [...legacyRows, ...parseSummaryCells(table, idx, legacyRows)] };
 }
 
 export function markDuplicates(

@@ -14,6 +14,7 @@ import { buildBackupCsv, buildLegacyCsv } from '../../src/lib/csv';
 import { nowLocalIso, parseDMY, ymdToDMY } from '../../src/lib/dates';
 import { formatINR, paiseToPlain, parseSignedAmount } from '../../src/lib/money';
 import { Card, Field, PrimaryButton, Screen, SectionLabel, Segmented, errorMessage } from '../../src/components/ui';
+import { AccountEditor } from '../../src/components/AccountEditor';
 
 export default function SettingsScreen() {
   const t = useTheme();
@@ -63,7 +64,7 @@ export default function SettingsScreen() {
 
       <SectionLabel>Accounts</SectionLabel>
       <Text style={{ color: t.textMuted, fontSize: 14 }}>
-        Set each account&apos;s real balance and the date it applies from. Only transactions on or after that date change the balance, so imported history won&apos;t distort it. Leave the date blank to count everything.
+        Set each account&apos;s real balance and the date it applies from. Only transactions on or after that date change the balance, so imported history won&apos;t distort it. Turn on Count all history to include everything.
       </Text>
       {balances.map((a) => <AccountEditor key={`${a.id}-${a.opening_balance_paise}-${a.opening_as_of}`} account={a} />)}
 
@@ -101,44 +102,6 @@ export default function SettingsScreen() {
         PocketLedger {Constants.expoConfig?.version ?? ''}
       </Text>
     </Screen>
-  );
-}
-
-function AccountEditor({ account }: { account: AccountWithBalance }) {
-  const t = useTheme();
-  const [opening, setOpening] = useState(paiseToPlain(account.opening_balance_paise));
-  const [asOf, setAsOf] = useState(account.opening_as_of.startsWith('1970') ? '' : ymdToDMY(account.opening_as_of.slice(0, 10)));
-
-  const save = () => {
-    const paise = parseSignedAmount(opening);
-    if (paise === null) {
-      Alert.alert('Check the amount', 'Enter the opening balance in rupees, e.g. 4510 or 303.63.');
-      return;
-    }
-    const ymd = asOf.trim() ? parseDMY(asOf) : '1970-01-01';
-    if (!ymd) {
-      Alert.alert('Check the date', 'Enter the date as DD/MM/YYYY, or leave it blank.');
-      return;
-    }
-    try {
-      updateAccountOpening(getDb(), account.id, paise, `${ymd}T00:00`);
-      bumpLedger();
-      Alert.alert('Saved', `${account.name} opening balance updated.`);
-    } catch (e) {
-      Alert.alert('Could not save', errorMessage(e));
-    }
-  };
-
-  return (
-    <Card style={{ gap: 12 }}>
-      <View style={s.accountTop}>
-        <Text style={{ color: t.text, fontSize: 18, fontWeight: '800' }}>{account.name}</Text>
-        <Text style={{ color: account.balance_paise < 0 ? t.expense : t.text, fontSize: 18, fontWeight: '800' }}>{formatINR(account.balance_paise)}</Text>
-      </View>
-      <Field label="Opening balance (₹)" value={opening} onChangeText={setOpening} keyboardType="numbers-and-punctuation" />
-      <Field label="Counts from (DD/MM/YYYY)" value={asOf} onChangeText={setAsOf} placeholder="Blank = from the beginning" keyboardType="numbers-and-punctuation" maxLength={10} />
-      <PrimaryButton label={`Save ${account.name}`} icon="save" tone="ghost" onPress={save} />
-    </Card>
   );
 }
 

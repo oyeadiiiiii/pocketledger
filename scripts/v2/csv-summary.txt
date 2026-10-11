@@ -1,0 +1,43 @@
+const LEGACY_KEYS: LegacyKey[] = ['title', 'date', 'category', 'amount', 'mode', 'remark'];
+
+/**
+ * Monthly tabs keep Salary Credit / Loan Taken / Loan Repaid as label + value cells beside the
+ * table (e.g. K8 "Salary Credit", L8 "₹9,677.00"). Calculated cells (IN, Save, Total Expense,
+ * Had/Used/Left, category totals) are deliberately ignored.
+ */
+const SUMMARY_LABELS: Array<{ re: RegExp; type: TxType; title: string; category: string | null }> = [
+  { re: /^salary( credit(ed)?)?$/, type: 'income', title: 'Salary Credit', category: 'Salary' },
+  { re: /^loan taken$/, type: 'loan_taken', title: 'Loan Taken', category: null },
+  { re: /^loan (repaid|repayment|returned)$/, type: 'loan_repaid', title: 'Loan Repaid', category: null },
+];
+
+function parseSummaryCells(table: string[][], idx: Record<LegacyKey, number>, txRows: ImportRow[]): ImportRow[] {
+  const tableCols = new Set(LEGACY_KEYS.map((k) => idx[k]).filter((c) => c >= 0));
+  const dates = txRows.filter((r) => r.occurredAt).map((r) => r.occurredAt.slice(0, 10)).sort();
+  const firstDate = dates[0] ?? null;
+  const out: ImportRow[] = [];
+  table.forEach((r, rowIndex) => {
+    if (rowIndex === 0) return;
+    r.forEach((cell, c) => {
+      if (tableCols.has(c)) return;
+      const label = cell.trim().toLowerCase().replace(/\s+/g, ' ');
+      const match = SUMMARY_LABELS.find((l) => l.re.test(label));
+      if (!match) return;
+      const valueCell = r.slice(c + 1).find((x) => x.trim() !== '') ?? '';
+      const amount = parseSignedAmount(valueCell.trim());
+      if (amount === null || amount === 0) return;
+      const errors: string[] = [];
+      const warnings = ['From the summary cells beside the table'];
+      if (amount < 0) errors.push('Amount must be greater than ₹0');
+      if (firstDate) warnings.push('Date estimated from the first transaction in this tab; edit it after import if needed');
+      else errors.push('No transaction dates in this file to place it on');
+      out.push({
+        line: rowIndex + 1, id: null, type: match.type, title: match.title,
+        occurredAt: firstDate ? `${firstDate}T09:00` : '', categoryName: match.category,
+        accountKind: 'online', toAccountKind: null, amountPaise: Math.abs(amount), remark: 'Imported from spreadsheet summary',
+        errors, warnings, duplicate: false, include: errors.length === 0,
+      });
+    });
+  });
+  return out;
+}

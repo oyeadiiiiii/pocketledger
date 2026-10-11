@@ -1,0 +1,21 @@
+    const modeRaw = get('mode');
+    let accountKind: AccountKind = 'online';
+    const kind = parseKind(modeRaw);
+    if (kind) accountKind = kind;
+    else if (!modeRaw) warnings.push('No mode given, treated as Online');
+    else if (/upi|card|bank|net|gpay|paytm|phonepe/i.test(modeRaw)) warnings.push(`Mode "${modeRaw}" treated as Online`);
+    else errors.push(`Unknown mode "${modeRaw}" (expected Cash or Online)`);
+
+    const rawCat = get('category');
+    const type = classifyLegacyRow(title, rawCat);
+    let cat: string | null;
+    if (type === 'loan_taken' || type === 'loan_repaid') {
+      cat = null;
+    } else if (type === 'income') {
+      cat = /salary/i.test(`${title} ${rawCat}`) ? 'Salary' : 'Income';
+    } else {
+      let c = rawCat;
+      if (!c) { c = 'Misc.'; warnings.push('No category given, using Misc.'); }
+      if (c.length > 40) errors.push('Category name longer than 40 characters');
+      cat = canonicalCategory(c, known, warnings);
+    }

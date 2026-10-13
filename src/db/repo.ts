@@ -368,8 +368,6 @@ export function ledgerStats(db: SqlDriver): { transactions: number; pending: num
   };
 }
 
-export function listTransactions(db: SqlDriver, f: TxFilter = {}): TxView[] {
-
 // ======================= CSV import / restore =======================
 export interface ImportPreview {
   format: ImportFormat;

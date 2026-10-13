@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getDb } from '../../src/db';
 import {
-  accountBalances, categorySpend, countPending, listTransactions, monthSummary, monthlySeries,
+  accountBalances, categorySpend, listTransactions, monthSummary, monthlySeries,
 } from '../../src/db/repo';
 import { useLedgerVersion } from '../../src/state/ledgerStore';
 import { useTheme } from '../../src/theme/ThemeProvider';
@@ -28,7 +28,6 @@ export default function HomeScreen() {
       series: monthlySeries(db, month, 6),
       cats: categorySpend(db, month).slice(0, 5),
       recent: listTransactions(db, { limit: 6 }),
-      pending: countPending(db),
     };
   }, [month, v]);
 
@@ -52,16 +51,6 @@ export default function HomeScreen() {
             </View>
           </View>
         </FadeIn>
-
-        {d.pending > 0 ? (
-          <Card onPress={() => router.push('/pending')} style={{ backgroundColor: t.warningSoft, borderColor: t.warning }} accessibilityLabel={`${d.pending} bank alerts awaiting review`}>
-            <View style={s.bannerRow}>
-              <Ionicons name="notifications" size={22} color={t.warning} />
-              <Text style={[s.bannerText, { color: t.text }]}>{d.pending} bank alert{d.pending === 1 ? '' : 's'} awaiting review</Text>
-              <Ionicons name="chevron-forward" size={20} color={t.textMuted} />
-            </View>
-          </Card>
-        ) : null}
 
         <FadeIn delay={80}>
           <View style={s.grid}>
@@ -142,8 +131,6 @@ const s = StyleSheet.create({
   heroValue: { fontSize: 40, fontWeight: '900', letterSpacing: -1 },
   heroRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 16 },
   heroDivider: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch', opacity: 0.5 },
-  bannerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  bannerText: { flex: 1, fontSize: 16, fontWeight: '700' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },
   tile: { borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, padding: 14, gap: 6 },
   tileTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },

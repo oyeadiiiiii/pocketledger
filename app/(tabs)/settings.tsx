@@ -3,7 +3,6 @@ import { Alert, StyleSheet, Switch, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Constants from 'expo-constants';
 import * as Sharing from 'expo-sharing';
-import * as Clipboard from 'expo-clipboard';
 import { File, Paths } from 'expo-file-system';
 import { getDb } from '../../src/db';
 import {
@@ -18,8 +17,6 @@ import {
   AUTO_BACKUP_INTERVAL_DAYS, formatBackupTime, isAutoBackupEnabled, lastAutoBackupAt, listAutoBackups,
   setAutoBackupEnabled, shareAutoBackup, writeAutoBackup,
 } from '../../src/lib/autoBackup';
-import { drainClipboardQueue } from '../../src/lib/clipboardIntake';
-import { encodeQueueEntry } from '../../src/lib/smsQueue';
 import { Card, Field, PrimaryButton, Screen, SectionLabel, Segmented, errorMessage } from '../../src/components/ui';
 import { AccountEditor } from '../../src/components/AccountEditor';
 
@@ -85,18 +82,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const shareQueueTest = async () => {
-    try {
-      await Clipboard.setStringAsync(encodeQueueEntry('Rs.450.00 debited from A/c XX1234 on 11-10-2026 at 14:35. Info: UPI/SWIGGY.'));
-      const r = await drainClipboardQueue(getDb());
-      Alert.alert('Test complete', r.created > 0
-        ? 'A fake bank alert was queued and picked up. Open the Review tab to see it, then delete it.'
-        : 'The queue was read but no alert was created. Check the Review tab.');
-    } catch (e) {
-      Alert.alert('Test failed', errorMessage(e));
-    }
-  };
-
   return (
     <Screen title="Settings">
       <SectionLabel>Appearance</SectionLabel>
@@ -137,34 +122,9 @@ export default function SettingsScreen() {
         </Text>
       </Card>
 
-      <SectionLabel>SMS automation (Apple Shortcuts)</SectionLabel>
-      <Card style={{ gap: 10 }}>
-        <Text style={{ color: t.textMuted, fontSize: 14 }}>
-          The Shortcut copies each bank SMS into a hidden queue and shows a notification.
-          <Text style={{ color: t.text, fontWeight: '700' }}> It never opens PocketLedger.</Text>{' '}
-          The next time you open the app, queued alerts appear in Review so you can confirm them all at once.
-        </Text>
-        <Text style={{ color: t.text, fontSize: 14, fontWeight: '700' }}>Set up once in Shortcuts</Text>
-        <Text style={{ color: t.textMuted, fontSize: 13 }}>
-          1. Automations → + → Message → Any → Run Immediately.{'\n'}
-          2. Add actions: <Text style={{ color: t.text }}>URL Encode</Text> the received message;{' '}
-          <Text style={{ color: t.text }}>Text</Text> = &quot;PLQ1|&quot; + the encoded message;{' '}
-          <Text style={{ color: t.text }}>Get Clipboard</Text>; <Text style={{ color: t.text }}>Combine Text</Text> (Clipboard + the PLQ1 line, separated by a new line);{' '}
-          <Text style={{ color: t.text }}>Copy to Clipboard</Text>; <Text style={{ color: t.text }}>Show Notification</Text> = &quot;Transaction detected&quot;.{'\n'}
-          3. Do not add any &quot;Open URL&quot; action — that is what used to launch the app.
-        </Text>
-        <PrimaryButton
-          label="Send a test alert"
-          icon="notifications"
-          tone="ghost"
-          onPress={shareQueueTest}
-        />
-      </Card>
-
-      <SectionLabel>Data</SectionLabel>
       <Card style={{ gap: 6 }}>
         <Text style={{ color: t.text }}>{stats.transactions} transactions · {stats.categories} categories</Text>
-        <Text style={{ color: t.text }}>{stats.pending} pending alerts · {stats.imports} imports</Text>
+        <Text style={{ color: t.text }}>{stats.imports} imports</Text>
         <Text style={{ color: t.textMuted, fontSize: 13 }}>Everything is stored only on this iPhone in SQLite. No account, cloud or internet needed.</Text>
       </Card>
 

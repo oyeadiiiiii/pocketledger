@@ -3,7 +3,6 @@
     "name": "PocketLedger",
     "slug": "pocketledger",
     "version": "1.0.0",
-    "scheme": "pocketledger",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "platforms": [

@@ -4,7 +4,6 @@ import type { AccountKind, CategoryKind, TxSource, TxType } from '../lib/types';
 import { type TxInput, dedupeKeyOf, firstError, needsCategory, validateTxInput } from '../lib/validation';
 import { isValidLocalIso, localIsoToDate, shiftMonth, toLocalIso } from '../lib/dates';
 import { MAX_PAISE } from '../lib/money';
-import { type IgnoreReason, SMS_MAX_LENGTH, maskSmsForStorage, parseSms, sanitizeSmsInput } from '../lib/smsParser';
 import { fingerprint } from '../lib/hash';
 import { type ExportTx, type ImportFormat, type ImportRow, markDuplicates, parseCsv, parseImportTable } from '../lib/csv';
 
@@ -59,30 +58,6 @@ export interface TxView {
   to_account_kind: AccountKind | null;
 }
 
-export interface PendingRow {
-  id: string;
-  direction: 'debit' | 'credit';
-  amount_paise: number | null;
-  alt_amounts: string;
-  suggested_type: TxType;
-  merchant: string;
-  occurred_at: string;
-  account_id: string;
-  category_id: string | null;
-  sms_preview: string | null;
-  sms_hash: string;
-  reference: string | null;
-  account_hint: string | null;
-  confidence: number;
-  flags: string;
-  notes: string | null;
-  possible_duplicate_of: string | null;
-  status: 'pending' | 'confirmed' | 'ignored';
-  confirmed_tx_id: string | null;
-  created_at: string;
-  resolved_at: string | null;
-}
-
 export interface MonthSummary {
   income: number;
   expenses: number;      // expenses minus refunds
@@ -105,24 +80,6 @@ export function setSetting(db: SqlDriver, key: string, value: string): void {
     'INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at',
     [key, value, stamp()],
   );
-}
-
-const makeToken = (): string => (newId() + newId()).replace(/-/g, '').slice(0, 24);
-
-/** Secret key the Apple Shortcut must send, so other apps/websites cannot inject entries. */
-export function getSmsToken(db: SqlDriver): string {
-  let token = getSetting(db, 'sms_token');
-  if (!token) {
-    token = makeToken();
-    setSetting(db, 'sms_token', token);
-  }
-  return token;
-}
-
-export function regenerateSmsToken(db: SqlDriver): string {
-  const token = makeToken();
-  setSetting(db, 'sms_token', token);
-  return token;
 }
 
 // ======================= Accounts =======================
@@ -411,123 +368,7 @@ export function ledgerStats(db: SqlDriver): { transactions: number; pending: num
   };
 }
 
-// ======================= SMS intake & Pending Review =======================
-export type IngestOutcome =
-  | { status: 'created'; pendingId: string; possibleDuplicateOf: string | null }
-  | { status: 'ignored'; reason: IgnoreReason }
-  | { status: 'duplicate'; existingId: string; reason: 'same_message' | 'same_reference' }
-  | { status: 'rejected'; reason: 'empty' | 'too_long' | 'rate_limited' };
-
-const DEBIT_TYPES: TxType[] = ['expense', 'loan_repaid', 'transfer'];
-const CREDIT_TYPES: TxType[] = ['income', 'refund', 'loan_taken'];
-
-/**
- * Turns raw bank-SMS text into a Pending Review item. Never writes to the ledger.
- * OTP / failed / balance-only / promotional messages are discarded and nothing is stored.
- */
-export function ingestSms(db: SqlDriver, raw: unknown, now: Date = new Date()): IngestOutcome {
-  const text = sanitizeSmsInput(raw);
-  if (!text) return { status: 'rejected', reason: 'empty' };
-  if (text.length > SMS_MAX_LENGTH) return { status: 'rejected', reason: 'too_long' };
-
-  const parsed = parseSms(text, { now });
-  if (parsed.kind === 'ignored') return { status: 'ignored', reason: parsed.reason };
-
-  const hash = fingerprint(text);
-  return db.transaction<IngestOutcome>(() => {
-    const same = db.first<{ id: string }>('SELECT id FROM pending_transactions WHERE sms_hash = ?', [hash]);
-    if (same) return { status: 'duplicate', existingId: same.id, reason: 'same_message' };
-
-    if (parsed.reference) {
-      const byRef = db.first<{ id: string }>(
-        `SELECT id FROM pending_transactions WHERE reference = ? AND status <> 'ignored'
-         UNION ALL SELECT id FROM transactions WHERE external_ref = ? LIMIT 1`,
-        [parsed.reference, parsed.reference],
-      );
-      if (byRef) return { status: 'duplicate', existingId: byRef.id, reason: 'same_reference' };
-    }
-
-    const since = new Date(now.getTime() - 10 * 60_000).toISOString();
-    const recent = db.first<{ n: number }>('SELECT COUNT(*) AS n FROM pending_transactions WHERE created_at >= ?', [since])?.n ?? 0;
-    if (recent >= 30) return { status: 'rejected', reason: 'rate_limited' };
-
-    // Near-duplicate: same amount and direction within +/-10 minutes (e.g. bank + UPI app both alert).
-    let possibleDuplicateOf: string | null = null;
-    if (parsed.amountPaise !== null) {
-      const at = localIsoToDate(parsed.occurredAt).getTime();
-      const from = toLocalIso(new Date(at - 10 * 60_000));
-      const to = toLocalIso(new Date(at + 10 * 60_000));
-      const types = parsed.direction === 'debit' ? DEBIT_TYPES : CREDIT_TYPES;
-      const near = db.first<{ id: string }>(
-        `SELECT id FROM pending_transactions
-           WHERE amount_paise = ? AND direction = ? AND status <> 'ignored' AND occurred_at BETWEEN ? AND ?
-         UNION ALL
-         SELECT id FROM transactions
-           WHERE amount_paise = ? AND type IN (${types.map(() => '?').join(',')}) AND occurred_at BETWEEN ? AND ?
-         LIMIT 1`,
-        [parsed.amountPaise, parsed.direction, from, to, parsed.amountPaise, ...types, from, to],
-      );
-      if (near) possibleDuplicateOf = near.id;
-    }
-
-    const id = newId();
-    const categoryId = parsed.suggestedCategory ? categoryIdByName(db, parsed.suggestedCategory) : null;
-    const flags = possibleDuplicateOf ? [...parsed.flags, 'possible_duplicate'] : parsed.flags;
-    db.run(
-      `INSERT INTO pending_transactions (id, direction, amount_paise, alt_amounts, suggested_type, merchant, occurred_at,
-         account_id, category_id, sms_preview, sms_hash, reference, account_hint, confidence, flags, notes,
-         possible_duplicate_of, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'pending', ?)`,
-      [
-        id, parsed.direction, parsed.amountPaise, JSON.stringify(parsed.alternativeAmountsPaise), parsed.suggestedType,
-        parsed.merchant, parsed.occurredAt, accountIdByKind(db, 'online'), categoryId, maskSmsForStorage(text), hash,
-        parsed.reference, parsed.accountLast4, parsed.confidence, JSON.stringify(flags), possibleDuplicateOf, now.toISOString(),
-      ],
-    );
-    return { status: 'created', pendingId: id, possibleDuplicateOf };
-  });
-}
-
-export function listPending(db: SqlDriver): PendingRow[] {
-  return db.all<PendingRow>("SELECT * FROM pending_transactions WHERE status = 'pending' ORDER BY occurred_at DESC, created_at DESC");
-}
-
-export function listRecentlyResolved(db: SqlDriver, limit = 10): PendingRow[] {
-  return db.all<PendingRow>("SELECT * FROM pending_transactions WHERE status <> 'pending' ORDER BY resolved_at DESC LIMIT ?", [limit]);
-}
-
-export function countPending(db: SqlDriver): number {
-  return db.first<{ n: number }>("SELECT COUNT(*) AS n FROM pending_transactions WHERE status = 'pending'")?.n ?? 0;
-}
-
-export function getPending(db: SqlDriver, id: string): PendingRow | null {
-  return db.first<PendingRow>('SELECT * FROM pending_transactions WHERE id = ?', [id]);
-}
-
-/** Adds the reviewed transaction to the ledger EXACTLY once (status guard + UNIQUE source_pending_id + one DB transaction). */
-export function confirmPending(db: SqlDriver, id: string, input: TxInput): string {
-  return db.transaction(() => {
-    const p = getPending(db, id);
-    if (!p) throw new LedgerError('This review item no longer exists.');
-    if (p.status !== 'pending') throw new LedgerError(`This alert was already ${p.status}.`);
-    const txId = insertTransaction(db, input, { source: 'sms', sourcePendingId: id, externalRef: p.reference });
-    const r = db.run(
-      "UPDATE pending_transactions SET status = 'confirmed', confirmed_tx_id = ?, notes = ?, resolved_at = ? WHERE id = ? AND status = 'pending'",
-      [txId, input.remark, stamp(), id],
-    );
-    if (r.changes !== 1) throw new LedgerError('Could not confirm. It may have been resolved already.');
-    return txId;
-  });
-}
-
-/** Ignored items never touch balances. The SMS text is discarded; only the fingerprint is kept to block repeats. */
-export function ignorePending(db: SqlDriver, id: string): void {
-  const r = db.run(
-    "UPDATE pending_transactions SET status = 'ignored', sms_preview = NULL, resolved_at = ? WHERE id = ? AND status = 'pending'",
-    [stamp(), id],
-  );
-  if (r.changes !== 1) throw new LedgerError('This alert was already resolved.');
-}
+export function listTransactions(db: SqlDriver, f: TxFilter = {}): TxView[] {
 
 // ======================= CSV import / restore =======================
 export interface ImportPreview {

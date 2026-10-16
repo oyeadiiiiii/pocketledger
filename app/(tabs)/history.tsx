@@ -6,7 +6,7 @@ import { getDb } from '../../src/db';
 import { deleteTransaction, listCategories, listTransactions, type TxView } from '../../src/db/repo';
 import { bumpLedger, useLedgerVersion } from '../../src/state/ledgerStore';
 import { useTheme } from '../../src/theme/ThemeProvider';
-import { TX_TYPES, TX_TYPE_LABEL, flowSign, type AccountKind, type TxType } from '../../src/lib/types';
+import { FILTER_TYPES, TX_TYPE_LABEL, flowSign, type AccountKind, type TxType } from '../../src/lib/types';
 import { formatDate, formatDateTime } from '../../src/lib/dates';
 import { formatINR } from '../../src/lib/money';
 import { Card, Chip, EmptyState, Screen, SectionLabel, Segmented, asIcon, errorMessage } from '../../src/components/ui';
@@ -29,6 +29,7 @@ export default function HistoryScreen() {
   const [types, setTypes] = useState<TxType[]>([]);
   const [cats, setCats] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [monthOpen, setMonthOpen] = useState(false);
 
   // Arriving from Home's "Top categories": pre-select that category and show the filter.
   useFocusEffect(
@@ -115,8 +116,16 @@ export default function HistoryScreen() {
 
       {showFilters ? (
         <Card style={{ gap: 14 }}>
-          <SectionLabel>Month</SectionLabel>
-          <MonthPicker value={month} onChange={setMonth} allowAll />
+          {/* Month is collapsed by default while any other filter is active. */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Pressable onPress={() => setMonthOpen((v) => !v)} style={{ padding: 4 }}>
+              <Ionicons name={monthOpen ? 'chevron-up' : 'chevron-down'} size={18} color={t.textMuted} />
+            </Pressable>
+            <Pressable onPress={() => setMonthOpen((v) => !v)}>
+              <SectionLabel>Month</SectionLabel>
+            </Pressable>
+          </View>
+          {monthOpen ? <MonthPicker value={month} onChange={setMonth} allowAll /> : null}
           <SectionLabel>Account</SectionLabel>
           <Segmented
             value={account}
@@ -125,7 +134,7 @@ export default function HistoryScreen() {
           />
           <SectionLabel>Type</SectionLabel>
           <View style={s.wrap}>
-            {TX_TYPES.map((ty) => <Chip key={ty} label={TX_TYPE_LABEL[ty]} selected={types.includes(ty)} onPress={() => setTypes((x) => toggle(x, ty))} />)}
+            {FILTER_TYPES.map((ty) => <Chip key={ty} label={TX_TYPE_LABEL[ty]} selected={types.includes(ty)} onPress={() => setTypes((x) => toggle(x, ty))} />)}
           </View>
           <SectionLabel>Category</SectionLabel>
           <View style={s.wrap}>

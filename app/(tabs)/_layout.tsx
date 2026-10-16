@@ -20,6 +20,13 @@ export default function TabsLayout() {
       <Tabs.Screen name="history" options={{ title: 'History', tabBarIcon: ({ color, size }) => <Ionicons name="list" color={color} size={size} /> }} />
       <Tabs.Screen name="analytics" options={{ title: 'Analytics', tabBarIcon: ({ color, size }) => <Ionicons name="stats-chart" color={color} size={size} /> }} />
       <Tabs.Screen name="settings" options={{ title: 'Settings', tabBarIcon: ({ color, size }) => <Ionicons name="settings" color={color} size={size} /> }} />
+      <Tabs.Screen
+        name="transfer"
+        options={{
+          title: 'Transfer',
+          tabBarIcon: ({ color, size }) => <Ionicons name="swap-horizontal" color={color} size={size} />,
+        }}
+      />
     </Tabs>
   );
 }

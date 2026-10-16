@@ -43,11 +43,7 @@ function categoriesFor(type: TxType, categories: Category[]): Category[] {
   return categories.filter((c) => c.kind !== 'income');
 }
 
-function endOfToday(): Date {
-  const d = new Date();
-  d.setHours(23, 59, 59, 999);
-  return d;
-}
+
 
 interface Props {
   initial: TxFormValues;
@@ -120,7 +116,7 @@ export function TransactionForm({ initial, accounts, categories, submitLabel, on
         error={errors.title} placeholder={v.type === 'income' ? 'e.g. Salary Credit' : 'e.g. Butter Chicken'} maxLength={120} returnKeyType="done" />
 
       <View style={{ gap: 10 }}>
-        <DateField label="Date and time" value={v.occurredAt} onChange={(iso) => set('occurredAt', iso)} maximumDate={endOfToday()} />
+        <DateField label="Date and time" value={v.occurredAt} onChange={(iso) => set('occurredAt', iso)} />
         <View style={s.wrap}>
           <Chip label="Today" selected={v.occurredAt.startsWith(today)} onPress={() => setDay(today)} />
           <Chip label="Yesterday" selected={v.occurredAt.startsWith(yesterday)} onPress={() => setDay(yesterday)} />

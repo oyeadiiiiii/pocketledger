@@ -22,3 +22,5 @@ export function flowSign(type: TxType): 1 | -1 | 0 {
 export function isTxType(v: unknown): v is TxType {
   return typeof v === 'string' && (TX_TYPES as string[]).includes(v);
 }
+
+export const FILTER_TYPES: TxType[] = ['expense', 'income'];

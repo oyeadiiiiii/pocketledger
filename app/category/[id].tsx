@@ -39,7 +39,7 @@ export default function CategoryScreen() {
   if (!cat) {
     return (
       <>
-        <Stack.Screen options={{ title: 'Category' }} />
+        <Stack.Screen options={{ title: 'Category', headerShown: false }} />
         <Screen title="Category">
           <EmptyState icon="pricetag-outline" title="Category not found" />
         </Screen>
@@ -50,8 +50,8 @@ export default function CategoryScreen() {
   return (
     <>
       <Stack.Screen options={{ title: cat.name }} />
-      <Screen title={cat.name}>
-        <View style={{ gap: 8 }}>
+      <Screen>
+        <View style={{ gap: 8, marginTop: -16 }}>
           <Card style={{ alignItems: 'center', gap: 6, paddingVertical: 18 }}>
             <IconCircle name={asIcon(cat.icon)} color={cat.color} size={48} />
             <Text style={{ color: t.text, fontSize: 16, fontWeight: '700' }}>{cat.name}</Text>

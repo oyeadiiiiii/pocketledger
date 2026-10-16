@@ -19,6 +19,7 @@ import {
 } from '../../src/lib/autoBackup';
 import { Card, Field, PrimaryButton, Screen, SectionLabel, Segmented, errorMessage } from '../../src/components/ui';
 import { AccountEditor } from '../../src/components/AccountEditor';
+import { AccountTransfer } from '../../src/components/AccountTransfer';
 
 export default function SettingsScreen() {
   const t = useTheme();
@@ -96,6 +97,9 @@ export default function SettingsScreen() {
         Set each account&apos;s real balance and the date it applies from. Only transactions on or after that date change the balance, so imported history won&apos;t distort it. Turn on Count all history to include everything.
       </Text>
       {balances.map((a) => <AccountEditor key={`${a.id}-${a.opening_balance_paise}-${a.opening_as_of}`} account={a} />)}
+
+      <SectionLabel>Move money</SectionLabel>
+      <AccountTransfer accounts={balances} />
 
       <SectionLabel>Categories</SectionLabel>
       <PrimaryButton label="Manage categories" icon="pricetags" tone="ghost" onPress={() => router.push('/categories')} />

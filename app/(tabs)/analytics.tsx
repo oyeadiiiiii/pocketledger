@@ -36,7 +36,7 @@ export default function AnalyticsScreen() {
         {d.cats.length ? (
           <HBarList items={d.cats.map((c) => ({
             label: c.name, value: c.total, color: c.color, icon: c.icon,
-            onPress: () => router.push(`/history?cat=${encodeURIComponent(c.id)}`),
+            onPress: () => router.push(`/category/${encodeURIComponent(c.id)}`),
           }))} />
         ) : (
           <EmptyState icon="pie-chart-outline" title={`No spending in ${monthLabel(month)}`} />

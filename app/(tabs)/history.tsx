@@ -29,7 +29,6 @@ export default function HistoryScreen() {
   const [types, setTypes] = useState<TxType[]>([]);
   const [cats, setCats] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
-  const [monthOpen, setMonthOpen] = useState(false);
 
   // Arriving from Home's "Top categories": pre-select that category and show the filter.
   useFocusEffect(
@@ -116,16 +115,8 @@ export default function HistoryScreen() {
 
       {showFilters ? (
         <Card style={{ gap: 14 }}>
-          {/* Month is collapsed by default while any other filter is active. */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Pressable onPress={() => setMonthOpen((v) => !v)} style={{ padding: 4 }}>
-              <Ionicons name={monthOpen ? 'chevron-up' : 'chevron-down'} size={18} color={t.textMuted} />
-            </Pressable>
-            <Pressable onPress={() => setMonthOpen((v) => !v)}>
-              <SectionLabel>Month</SectionLabel>
-            </Pressable>
-          </View>
-          {monthOpen ? <MonthPicker value={month} onChange={setMonth} allowAll /> : null}
+          <SectionLabel>Month</SectionLabel>
+          <MonthPicker value={month} onChange={setMonth} allowAll />
           <SectionLabel>Account</SectionLabel>
           <Segmented
             value={account}

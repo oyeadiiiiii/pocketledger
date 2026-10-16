@@ -1,12 +1,12 @@
 import React, { useMemo } from 'react';
 import { Alert } from 'react-native';
-import { Stack, router } from 'expo-router';
-import { getDb } from '../src/db';
-import { insertTransaction, listAccounts, listCategories } from '../src/db/repo';
-import { bumpLedger } from '../src/state/ledgerStore';
-import { errorMessage } from '../src/components/ui';
-import type { TxInput } from '../src/lib/validation';
-import { TransactionForm, blankFormValues } from '../src/components/TransactionForm';
+import { router } from 'expo-router';
+import { getDb } from '../../src/db';
+import { insertTransaction, listAccounts, listCategories } from '../../src/db/repo';
+import { bumpLedger } from '../../src/state/ledgerStore';
+import { Screen, errorMessage } from '../../src/components/ui';
+import type { TxInput } from '../../src/lib/validation';
+import { TransactionForm, blankFormValues } from '../../src/components/TransactionForm';
 
 /** Keeps "move money between my own accounts" separate from the expense/income flow. */
 export default function TransferScreen() {
@@ -29,8 +29,7 @@ export default function TransferScreen() {
   };
 
   return (
-    <>
-      <Stack.Screen options={{ title: 'Transfer money' }} />
+    <Screen edges={['bottom']} title="Transfer money">
       <TransactionForm
         initial={initial}
         accounts={accounts}
@@ -39,6 +38,6 @@ export default function TransferScreen() {
         types={['transfer']}
         onSubmit={onSubmit}
       />
-    </>
+    </Screen>
   );
 }

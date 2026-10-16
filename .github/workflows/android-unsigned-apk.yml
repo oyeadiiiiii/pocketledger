@@ -65,8 +65,9 @@ jobs:
           APK=$(find app/build/outputs/apk/release -name '*.apk' -type f | head -n 1)
           if [ -z "$APK" ]; then echo "No APK produced"; exit 1; fi
           APK_NAME=$(basename "$APK")
-          cp "$APK" "../dist/PocketLedger-unsigned.apk"
-          ls -lh "../dist/PocketLedger-unsigned.apk"
+          mkdir -p ../dist
+          cp "$APK" ../dist/PocketLedger-unsigned.apk
+          ls -lh ../dist/PocketLedger-unsigned.apk
 
       - name: Upload build log on failure
         if: failure()

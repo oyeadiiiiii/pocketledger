@@ -1,0 +1,84 @@
+name: Android unsigned APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore: ['**/*.md']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Dependency check, typecheck, tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Expo dependency check
+        run: npx expo install --check
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test -- --ci
+
+  build-android:
+    name: Build unsigned Android APK
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      EXPO_NO_TELEMETRY: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Toolchain versions
+        run: |
+          node --version
+          java -version 2>&1 | head -n 1
+
+      - name: Generate native Android project (expo prebuild)
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: Compile Release unsigned APK
+        run: |
+          set -euo pipefail
+          cd android
+          chmod +x gradlew
+          ./gradlew clean assembleRelease --no-daemon
+          APK=$(find app/build/outputs/apk/release -name '*.apk' -type f | head -n 1)
+          if [ -z "$APK" ]; then echo "No APK produced"; exit 1; fi
+          APK_NAME=$(basename "$APK")
+          cp "$APK" "../dist/$APK_NAME"
+          ls -lh "../dist/$APK_NAME"
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-build-log
+          path: android/app/build/outputs/logs
+          if-no-files-found: ignore
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PocketLedger-unsigned-apk
+          path: dist/PocketLedger-unsigned.apk
+          if-no-files-found: error
+          retention-days: 14

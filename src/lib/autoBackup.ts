@@ -15,15 +15,19 @@ function backupDir(): Directory {
   return dir;
 }
 
-/** Sortable backup file names currently on disk, newest first. */
+/** Sortable backup file names currently on disk, newest first. Never throws. */
 export function listAutoBackups(): string[] {
-  const dir = backupDir();
-  if (!dir.exists) return [];
-  return dir.list()
-    .filter((e): e is File => !(e instanceof Directory) && e.name.startsWith(AUTO_BACKUP_PREFIX))
-    .map((f) => f.name)
-    .sort()
-    .reverse();
+  try {
+    const dir = backupDir();
+    if (!dir.exists) return [];
+    return dir.list()
+      .filter((e): e is File => !(e instanceof Directory) && e.name.startsWith(AUTO_BACKUP_PREFIX))
+      .map((f) => f.name)
+      .sort()
+      .reverse();
+  } catch {
+    return [];
+  }
 }
 
 export function isAutoBackupEnabled(db: SqlDriver): boolean {

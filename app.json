@@ -2,16 +2,18 @@
   "expo": {
     "name": "PocketLedger",
     "slug": "pocketledger",
+    "scheme": "pocketledger",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
     "platforms": [
       "ios",
       "android"
     ],
     "ios": {
       "bundleIdentifier": "com.adityaraj.pocketledger",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "supportsTablet": false,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -24,7 +26,6 @@
       "expo-router",
       "@react-native-community/datetimepicker",
       "expo-sharing"
-    ],
-    "icon": "./assets/icon.png"
+    ]
   }
 }

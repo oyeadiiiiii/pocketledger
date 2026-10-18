@@ -112,8 +112,8 @@ export function TransactionForm({ initial, accounts, categories, submitLabel, on
         <ErrorText>{errors.amount}</ErrorText>
       </View>
 
-      <Field label={v.type === 'transfer' ? 'Description' : 'Title or merchant'} value={v.title} onChangeText={(x) => set('title', x)}
-        error={errors.title} placeholder={v.type === 'income' ? 'e.g. Salary Credit' : 'e.g. Butter Chicken'} maxLength={120} returnKeyType="done" />
+      <Field label={v.type === 'transfer' ? 'Description' : v.type === 'credit' ? 'Credit-card purchase' : 'Title or merchant'} value={v.title} onChangeText={(x) => set('title', x)}
+        error={errors.title} placeholder={v.type === 'income' ? 'e.g. Salary Credit' : v.type === 'credit' ? 'e.g. Flipkart order' : 'e.g. Butter Chicken'} maxLength={120} returnKeyType="done" />
 
       <View style={{ gap: 10 }}>
         <DateField label="Date and time" value={v.occurredAt} onChange={(iso) => set('occurredAt', iso)} />
@@ -137,7 +137,7 @@ export function TransactionForm({ initial, accounts, categories, submitLabel, on
       ) : null}
 
       <View style={{ gap: 10 }}>
-        <SectionLabel>{v.type === 'transfer' ? 'From account' : 'Account'}</SectionLabel>
+        <SectionLabel>{v.type === 'transfer' ? 'From account' : v.type === 'credit_repaid' ? 'Paid from' : 'Account'}</SectionLabel>
         <Segmented value={v.accountId} options={accountOptions}
           onChange={(id) => setV((p) => ({ ...p, accountId: id, toAccountId: p.type === 'transfer' ? otherAccount(id) : null }))} />
         <ErrorText>{errors.account}</ErrorText>

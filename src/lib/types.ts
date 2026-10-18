@@ -1,20 +1,21 @@
-export type TxType = 'expense' | 'income' | 'loan_taken' | 'loan_repaid' | 'transfer' | 'refund';
+export type TxType = 'expense' | 'income' | 'loan_taken' | 'loan_repaid' | 'transfer' | 'refund' | 'credit' | 'credit_repaid';
 export type AccountKind = 'cash' | 'online';
 export type TxSource = 'manual' | 'sms' | 'csv' | 'restore';
 export type CategoryKind = 'expense' | 'income' | 'any';
 
-export const TX_TYPES: TxType[] = ['expense', 'income', 'loan_taken', 'loan_repaid', 'transfer', 'refund'];
+export const TX_TYPES: TxType[] = ['expense', 'income', 'loan_taken', 'loan_repaid', 'transfer', 'refund', 'credit', 'credit_repaid'];
 
 export const TX_TYPE_LABEL: Record<TxType, string> = {
   expense: 'Expense', income: 'Income', loan_taken: 'Loan Taken',
   loan_repaid: 'Loan Repaid', transfer: 'Transfer', refund: 'Refund',
+  credit: 'Credit', credit_repaid: 'Credit Repaid',
 };
 
-/** +1 money enters the account, -1 leaves it, 0 moves between your own accounts. */
+/** +1 money enters the account, -1 leaves it, 0 moves between your own accounts (or accrues as credit owed). */
 export function flowSign(type: TxType): 1 | -1 | 0 {
   switch (type) {
     case 'income': case 'loan_taken': case 'refund': return 1;
-    case 'expense': case 'loan_repaid': return -1;
+    case 'expense': case 'loan_repaid': case 'credit_repaid': return -1;
     default: return 0;
   }
 }
@@ -23,4 +24,4 @@ export function isTxType(v: unknown): v is TxType {
   return typeof v === 'string' && (TX_TYPES as string[]).includes(v);
 }
 
-export const FILTER_TYPES: TxType[] = ['expense', 'income'];
+export const FILTER_TYPES: TxType[] = ['expense', 'income', 'credit', 'credit_repaid'];

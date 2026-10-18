@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getDb } from '../../src/db';
 import {
-  accountBalances, categorySpend, listTransactions, monthSummary, monthlySeries,
+  accountBalances, categorySpend, creditOwed, listTransactions, monthSummary, monthlySeries,
 } from '../../src/db/repo';
 import { useLedgerVersion } from '../../src/state/ledgerStore';
 import { useTheme } from '../../src/theme/ThemeProvider';
@@ -24,6 +24,7 @@ export default function HomeScreen() {
     const db = getDb();
     return {
       balances: accountBalances(db),
+      creditOwed: creditOwed(db),
       s: monthSummary(db, month),
       series: monthlySeries(db, month, 6),
       cats: categorySpend(db, month).slice(0, 5),
@@ -34,6 +35,7 @@ export default function HomeScreen() {
   const total = d.balances.reduce((sum, a) => sum + a.balance_paise, 0);
   const cash = d.balances.find((a) => a.kind === 'cash')?.balance_paise ?? 0;
   const online = d.balances.find((a) => a.kind === 'online')?.balance_paise ?? 0;
+  const availableCash = total - d.creditOwed;
 
   return (
     <View style={{ flex: 1, backgroundColor: t.bg }}>
@@ -41,9 +43,12 @@ export default function HomeScreen() {
         <MonthPicker value={month} onChange={(k) => k && setMonth(k)} />
 
         <FadeIn>
-          <View style={[s.hero, { backgroundColor: t.heroBg }]} accessible accessibilityLabel={`Current balance ${formatINR(total)}. Cash ${formatINR(cash)}. Online ${formatINR(online)}.`}>
+          <View style={[s.hero, { backgroundColor: t.heroBg }]} accessible accessibilityLabel={`Current balance ${formatINR(availableCash)}. Cash ${formatINR(cash)}. Online ${formatINR(online)}. Credit owed ${formatINR(d.creditOwed)}.`}>
             <Text style={[s.heroLabel, { color: t.heroMuted }]}>Current balance</Text>
-            <Text style={[s.heroValue, { color: t.heroText }]} numberOfLines={1} adjustsFontSizeToFit>{formatINR(total)}</Text>
+            <Text style={[s.heroValue, { color: t.heroText }]} numberOfLines={1} adjustsFontSizeToFit>{formatINR(availableCash)}</Text>
+            <Text style={[s.heroReal, { color: t.heroMuted }]} numberOfLines={1} adjustsFontSizeToFit>
+              Actual {formatINR(total)}{d.creditOwed ? ` · Credit owed ${formatINR(d.creditOwed)}` : ''}
+            </Text>
             <View style={s.heroRow}>
               <HeroSplit icon="cash-outline" label="Cash" paise={cash} />
               <View style={[s.heroDivider, { backgroundColor: t.heroMuted }]} />
@@ -56,7 +61,8 @@ export default function HomeScreen() {
           <View style={s.grid}>
             <StatTile label="Income" paise={d.s.income} color={t.income} icon="arrow-down-circle" />
             <StatTile label="Expenses" paise={d.s.expenses} color={t.expense} icon="arrow-up-circle" hint={d.s.refunds ? `after ${formatCompactINR(d.s.refunds)} refunds` : undefined} />
-            <StatTile label="Savings" paise={d.s.savings} color={d.s.savings >= 0 ? t.income : t.expense} icon="shield-checkmark" hint="income − expenses" />
+            <StatTile label="Savings" paise={d.s.savings} color={d.s.savings >= 0 ? t.income : t.expense} icon="shield-checkmark" hint="income − expenses incl. credit" />
+            <StatTile label="Credit owed" paise={d.creditOwed} color={t.warning} icon="card" hint="credit − repaid" full />
           </View>
         </FadeIn>
 
@@ -129,6 +135,7 @@ const s = StyleSheet.create({
   hero: { borderRadius: 28, padding: 22, gap: 6 },
   heroLabel: { fontSize: 15, fontWeight: '600' },
   heroValue: { fontSize: 40, fontWeight: '900', letterSpacing: -1 },
+  heroReal: { fontSize: 13, fontWeight: '600' },
   heroRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 16 },
   heroDivider: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch', opacity: 0.5 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },

@@ -66,6 +66,8 @@ export interface MonthSummary {
   loanTaken: number;
   loanRepaid: number;
   transfers: number;
+  credit: number;        // credit-card spending owed
+  creditRepaid: number;  // credit-card repayments made
   savings: number;       // income - expenses (loans excluded)
   netCashFlow: number;   // everything that moved money in/out of your accounts
 }
@@ -101,7 +103,8 @@ export function accountBalances(db: SqlDriver): AccountWithBalance[] {
         WHEN t.type = 'transfer' AND t.to_account_id = a.id THEN t.amount_paise
         WHEN t.type = 'transfer' THEN -t.amount_paise
         WHEN t.type IN ('income', 'loan_taken', 'refund') THEN t.amount_paise
-        ELSE -t.amount_paise END)
+        WHEN t.type IN ('expense', 'loan_repaid', 'credit_repaid') THEN -t.amount_paise
+        ELSE 0 END)
       FROM transactions t
       WHERE (t.account_id = a.id OR t.to_account_id = a.id) AND t.occurred_at >= a.opening_as_of
     ), 0) AS balance_paise
@@ -289,21 +292,34 @@ export function exportRows(db: SqlDriver): ExportTx[] {
 
 // ======================= Summaries =======================
 type Totals = Record<TxType, number>;
-const emptyTotals = (): Totals => ({ expense: 0, income: 0, loan_taken: 0, loan_repaid: 0, transfer: 0, refund: 0 });
+const emptyTotals = (): Totals => ({ expense: 0, income: 0, loan_taken: 0, loan_repaid: 0, transfer: 0, refund: 0, credit: 0, credit_repaid: 0 });
 
 function summarize(t: Totals): MonthSummary {
-  const expenses = t.expense - t.refund;
+  const expenses = t.expense + t.credit - t.refund;
   return {
     income: t.income,
     expenses,
-    grossExpenses: t.expense,
+    grossExpenses: t.expense + t.credit,
     refunds: t.refund,
     loanTaken: t.loan_taken,
     loanRepaid: t.loan_repaid,
     transfers: t.transfer,
+    credit: t.credit,
+    creditRepaid: t.credit_repaid,
     savings: t.income - expenses,
-    netCashFlow: t.income + t.loan_taken + t.refund - t.expense - t.loan_repaid,
+    netCashFlow: t.income + t.loan_taken + t.refund - t.expense - t.loan_repaid - t.credit_repaid,
   };
+}
+
+/** Total credit-card spending still owed: all-time credit purchases minus all-time repayments. */
+export function creditOwed(db: SqlDriver): number {
+  const row = db.first<{ credit: number | null; repaid: number | null }>(
+    `SELECT
+       SUM(CASE WHEN type = 'credit' THEN amount_paise ELSE 0 END) AS credit,
+       SUM(CASE WHEN type = 'credit_repaid' THEN amount_paise ELSE 0 END) AS repaid
+     FROM transactions WHERE type IN ('credit', 'credit_repaid')`,
+  );
+  return (row?.credit ?? 0) - (row?.repaid ?? 0);
 }
 
 export function monthSummary(db: SqlDriver, monthKey: string): MonthSummary {
@@ -333,9 +349,11 @@ export interface CategorySpend { id: string; name: string; color: string; icon: 
 export function categorySpend(db: SqlDriver, monthKey: string): CategorySpend[] {
   return db.all<CategorySpend>(`
     SELECT c.id, c.name, c.color, c.icon,
-           SUM(CASE WHEN t.type = 'expense' THEN t.amount_paise ELSE -t.amount_paise END) AS total
+           SUM(CASE WHEN t.type = 'expense' THEN t.amount_paise
+                    WHEN t.type = 'credit' THEN t.amount_paise
+                    ELSE -t.amount_paise END) AS total
     FROM transactions t JOIN categories c ON c.id = t.category_id
-    WHERE t.month_key = ? AND t.type IN ('expense', 'refund')
+    WHERE t.month_key = ? AND t.type IN ('expense', 'refund', 'credit')
     GROUP BY c.id HAVING total > 0 ORDER BY total DESC`, [monthKey]);
 }
 

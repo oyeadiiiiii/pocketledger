@@ -33,11 +33,15 @@ export default function TransactionDetail() {
   }
 
   const sign = flowSign(tx.type);
-  const color = sign > 0 ? t.income : sign < 0 ? t.expense : t.text;
+  const color = tx.type === 'credit' ? t.warning : sign > 0 ? t.income : sign < 0 ? t.expense : t.text;
   const rows: [string, string][] = [
     ['Type', TX_TYPE_LABEL[tx.type]],
     ['Category', tx.category_name ?? '—'],
-    [tx.type === 'transfer' ? 'From → To' : 'Account', tx.type === 'transfer' ? `${tx.account_name} → ${tx.to_account_name ?? '?'}` : tx.account_name],
+    ['Account', tx.type === 'transfer'
+      ? `${tx.account_name} → ${tx.to_account_name ?? '?'}`
+      : tx.type === 'credit' ? `${tx.account_name} (Credit card)`
+      : tx.type === 'credit_repaid' ? `${tx.account_name} → Credit card`
+      : tx.account_name],
     ['Date', formatDateTime(tx.occurred_at)],
     ['Remarks', tx.remark ?? '—'],
     ['Source', SOURCE_LABEL[tx.source]],
@@ -66,7 +70,7 @@ export default function TransactionDetail() {
       <Card style={{ alignItems: 'center', gap: 10, paddingVertical: 24 }}>
         <IconCircle name={asIcon(tx.category_icon, 'receipt')} color={tx.category_color ?? color} size={56} />
         <Text style={[s.title, { color: t.text }]}>{tx.title}</Text>
-        <Text style={[s.amount, { color }]}>{`${sign > 0 ? '+' : sign < 0 ? '−' : ''}${formatINR(tx.amount_paise)}`}</Text>
+        <Text style={[s.amount, { color }]}>{tx.type === 'credit' ? `${formatINR(tx.amount_paise)}` : `${sign > 0 ? '+' : sign < 0 ? '−' : ''}${formatINR(tx.amount_paise)}`}</Text>
       </Card>
       <Card style={{ gap: 2 }}>
         {rows.map(([k, val]) => (

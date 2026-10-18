@@ -16,9 +16,9 @@ export interface TxInput {
 export type TxField = 'type' | 'amount' | 'title' | 'occurredAt' | 'category' | 'account' | 'toAccount' | 'remark';
 export type TxErrors = Partial<Record<TxField, string>>;
 
-/** Loans and transfers carry no spending category. */
+/** Loans, transfers and credit repayments carry no spending category. Credit purchases do. */
 export const needsCategory = (t: TxType): boolean =>
-  t === 'expense' || t === 'refund' || t === 'income';
+  t === 'expense' || t === 'refund' || t === 'income' || t === 'credit';
 
 export function validateTxInput(i: TxInput, now: Date = new Date()): TxErrors {
   const e: TxErrors = {};

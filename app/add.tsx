@@ -10,8 +10,8 @@ import type { TxInput } from '../src/lib/validation';
 import { EmptyState, Screen, errorMessage } from '../src/components/ui';
 import { TransactionForm, blankFormValues, valuesFromTx } from '../src/components/TransactionForm';
 
-/** Adding a transaction is deliberately simple: only Expense and Income. */
-const ADD_TYPES: TxType[] = ['expense', 'income'];
+/** Adding a transaction is deliberately simple: Expense, Income and Credit (credit-card spending stays out of balances until repaid). */
+const ADD_TYPES: TxType[] = ['expense', 'income', 'credit', 'credit_repaid'];
 
 export default function AddScreen() {
   const params = useLocalSearchParams<{ id?: string; type?: string }>();

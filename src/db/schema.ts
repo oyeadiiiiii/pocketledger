@@ -156,6 +156,58 @@ export const MIGRATIONS: Migration[] = [
       db.run("UPDATE categories SET kind = 'expense' WHERE id = 'cat_invest'");
     },
   },
+  {
+    version: 3,
+    up: (db) => {
+      // Credit-card activity was not part of the V1 `type` CHECK. Preserve every existing row,
+      // then relax SQLite's static constraint through the documented table-rebuild migration.
+      db.exec('PRAGMA foreign_keys = OFF;');
+      try {
+        db.exec(`
+          CREATE TABLE transactions_new (
+            id TEXT PRIMARY KEY NOT NULL,
+            type TEXT NOT NULL CHECK (type IN ('expense','income','loan_taken','loan_repaid','transfer','refund','credit','credit_repaid')),
+            amount_paise INTEGER NOT NULL CHECK (amount_paise > 0 AND amount_paise <= 100000000000),
+            title TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 120),
+            occurred_at TEXT NOT NULL,
+            month_key TEXT NOT NULL,
+            category_id TEXT REFERENCES categories(id) ON DELETE RESTRICT,
+            account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
+            to_account_id TEXT REFERENCES accounts(id) ON DELETE RESTRICT,
+            remark TEXT,
+            source TEXT NOT NULL CHECK (source IN ('manual','sms','csv','restore')),
+            source_pending_id TEXT UNIQUE REFERENCES pending_transactions(id) ON DELETE SET NULL,
+            import_id TEXT REFERENCES import_history(id) ON DELETE SET NULL,
+            external_ref TEXT,
+            dedupe_key TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            CHECK ((type = 'transfer') = (to_account_id IS NOT NULL)),
+            CHECK (to_account_id IS NULL OR to_account_id <> account_id)
+          );
+          INSERT INTO transactions_new (
+            id, type, amount_paise, title, occurred_at, month_key, category_id, account_id, to_account_id,
+            remark, source, source_pending_id, import_id, external_ref, dedupe_key, created_at, updated_at
+          )
+          SELECT
+            id, type, amount_paise, title, occurred_at, month_key, category_id, account_id, to_account_id,
+            remark, source, source_pending_id, import_id, external_ref, dedupe_key, created_at, updated_at
+          FROM transactions;
+          DROP TABLE transactions;
+          ALTER TABLE transactions_new RENAME TO transactions;
+          CREATE INDEX idx_tx_occurred ON transactions(occurred_at DESC);
+          CREATE INDEX idx_tx_month ON transactions(month_key, type);
+          CREATE INDEX idx_tx_category ON transactions(category_id);
+          CREATE INDEX idx_tx_account ON transactions(account_id);
+          CREATE INDEX idx_tx_to_account ON transactions(to_account_id);
+          CREATE INDEX idx_tx_dedupe ON transactions(dedupe_key);
+          CREATE INDEX idx_tx_ref ON transactions(external_ref);
+        `);
+      } finally {
+        db.exec('PRAGMA foreign_keys = ON;');
+      }
+    },
+  },
   // Future schema changes: add { version: 3, up: ... } here. Never edit earlier versions.
 ];
 

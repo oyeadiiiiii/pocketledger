@@ -14,6 +14,8 @@ const TYPE_ICON: Record<TxType, IconName> = {
   loan_repaid: 'checkmark-done-circle',
   transfer: 'swap-horizontal',
   refund: 'return-down-back',
+  credit: 'card',
+  credit_repaid: 'card-outline',
 };
 
 export function TxRow({ tx, onPress, onLongPress }: { tx: TxView; onPress?: () => void; onLongPress?: () => void }) {
@@ -21,9 +23,13 @@ export function TxRow({ tx, onPress, onLongPress }: { tx: TxView; onPress?: () =
   const sign = flowSign(tx.type);
   const amountColor = sign > 0 ? t.income : sign < 0 ? t.expense : t.textMuted;
   const iconColor = tx.category_color ?? (sign > 0 ? t.income : sign < 0 ? t.expense : t.accent);
-  const accountText = tx.type === 'transfer' ? `${tx.account_name} → ${tx.to_account_name ?? '?'}` : tx.account_name;
+  const accountText = tx.type === 'transfer'
+    ? `${tx.account_name} → ${tx.to_account_name ?? '?'}`
+    : tx.type === 'credit' ? `${tx.account_name} (Credit card)`
+    : tx.type === 'credit_repaid' ? `${tx.account_name} → Credit card`
+    : tx.account_name;
   const subtitle = [tx.category_name ?? TX_TYPE_LABEL[tx.type], accountText, formatDateTime(tx.occurred_at)].join(' · ');
-  const amount = `${sign > 0 ? '+' : sign < 0 ? '−' : ''}${formatINR(tx.amount_paise)}`;
+  const amount = tx.type === 'credit' ? `${formatINR(tx.amount_paise)}` : `${sign > 0 ? '+' : sign < 0 ? '−' : ''}${formatINR(tx.amount_paise)}`;
 
   return (
     <Pressable

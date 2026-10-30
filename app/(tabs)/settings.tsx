@@ -96,7 +96,7 @@ export default function SettingsScreen() {
       <Text style={{ color: t.textMuted, fontSize: 14 }}>
         Set each account&apos;s real balance and the date it applies from. Only transactions on or after that date change the balance, so imported history won&apos;t distort it. Turn on Count all history to include everything.
       </Text>
-      {balances.map((a) => <AccountEditor key={`${a.id}-${a.opening_balance_paise}-${a.opening_as_of}`} account={a} />)}
+      {balances.map((a) => <AccountEditor key={`${a.id}-${a.opening_balance_paise}-${a.opening_as_of}`} cashAccount={a.kind === 'cash' ? a : undefined} onlineAccount={a.kind === 'online' ? a : undefined} />)}
 
       <SectionLabel>Move money</SectionLabel>
       <AccountTransfer accounts={balances} />

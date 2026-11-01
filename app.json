@@ -7,7 +7,7 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/images.png",
-    "platforms":
+    "platforms": [
       "ios",
       "android"
     ],

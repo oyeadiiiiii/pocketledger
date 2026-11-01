@@ -6,7 +6,8 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "platforms": [
+    "icon": "./assets/images.png",
+    "platforms":
       "ios",
       "android"
     ],
